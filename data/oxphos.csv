@@ -1,0 +1,150 @@
+Complex	gene_id	gene_name	Function
+complex I	ENSG00000198888	ND1	core subunit
+complex I	ENSG00000198763	ND2	core subunit
+complex I	ENSG00000198840	ND3	core subunit
+complex I	ENSG00000198886	ND4	core subunit
+complex I	ENSG00000212907	ND4L	core subunit
+complex I	ENSG00000198786	ND5	core subunit
+complex I	ENSG00000198695	ND6	core subunit
+complex I	ENSG00000023228	NDUFS1	core subunit
+complex I	ENSG00000158864	NDUFS2	core subunit
+complex I	ENSG00000213619	NDUFS3	core subunit
+complex I	ENSG00000115286	NDUFS7	core subunit
+complex I	ENSG00000110717	NDUFS8	core subunit
+complex I	ENSG00000167792	NDUFV1	core subunit
+complex I	ENSG00000178127	NDUFV2	core subunit
+complex I	ENSG00000125356	NDUFA1	accessory subunit
+complex I	ENSG00000130414	NDUFA10	accessory subunit
+complex I	ENSG00000174886	NDUFA11	accessory subunit
+complex I	ENSG00000184752	NDUFA12	accessory subunit
+complex I	ENSG00000186010	NDUFA13	accessory subunit
+complex I	ENSG00000131495	NDUFA2	accessory subunit
+complex I	ENSG00000170906	NDUFA3	accessory subunit
+complex I	ENSG00000128609	NDUFA5	accessory subunit
+complex I	ENSG00000184983	NDUFA6	accessory subunit
+complex I	ENSG00000167774	NDUFA7	accessory subunit
+complex I	ENSG00000119421	NDUFA8	accessory subunit
+complex I	ENSG00000139180	NDUFA9	accessory subunit
+complex I	ENSG00000004779	NDUFAB1	accessory subunit
+complex I	ENSG00000183648	NDUFB1	accessory subunit
+complex I	ENSG00000140990	NDUFB10	accessory subunit
+complex I	ENSG00000147123	NDUFB11	accessory subunit
+complex I	ENSG00000090266	NDUFB2	accessory subunit
+complex I	ENSG00000119013	NDUFB3	accessory subunit
+complex I	ENSG00000065518	NDUFB4	accessory subunit
+complex I	ENSG00000136521	NDUFB5	accessory subunit
+complex I	ENSG00000165264	NDUFB6	accessory subunit
+complex I	ENSG00000099795	NDUFB7	accessory subunit
+complex I	ENSG00000166136	NDUFB8	accessory subunit
+complex I	ENSG00000147684	NDUFB9	accessory subunit
+complex I	ENSG00000109390	NDUFC1	accessory subunit
+complex I	ENSG00000151366	NDUFC2	accessory subunit
+complex I	ENSG00000164258	NDUFS4	accessory subunit
+complex I	ENSG00000168653	NDUFS5	accessory subunit
+complex I	ENSG00000145494	NDUFS6	accessory subunit
+complex I	ENSG00000160194	NDUFV3	accessory subunit
+complex I	ENSG00000137806	NDUFAF1	assembly factor
+complex I	ENSG00000164182	NDUFAF2	assembly factor
+complex I	ENSG00000178057	NDUFAF3	assembly factor
+complex I	ENSG00000123545	NDUFAF4	assembly factor
+complex I	ENSG00000101247	NDUFAF5	assembly factor
+complex II	ENSG00000073578	SDHA	subunit
+complex II	ENSG00000117118	SDHB	subunit
+complex II	ENSG00000143252	SDHC	subunit
+complex II	ENSG00000204370	SDHD	subunit
+complex II	ENSG00000205138	SDHAF1	assembly factor
+complex II	ENSG00000167985	SDHAF2	assembly factor
+complex III	ENSG00000198727	MT-CYB	subunit
+complex III	ENSG00000156467	UQCRB	subunit
+complex III	ENSG00000010256	UQCRC1	subunit
+complex III	ENSG00000140740	UQCRC2	subunit
+complex III	ENSG00000173660	UQCRH	subunit
+complex III	ENSG00000164405	UQCRQ	subunit
+complex III	ENSG00000184076	UQCR10	subunit
+complex III	ENSG00000127540	UQCR11	subunit
+complex III	ENSG00000169021	UQCRFS1	subunit
+complex III	ENSG00000101019	UQCC1	assembly factor
+complex III	ENSG00000137288	UQCC2	assembly factor
+complex III	ENSG00000011295	TTC19	assembly factor
+complex IV	ENSG00000198804	MT-CO1	subunit
+complex IV	ENSG00000198712	MT-CO2	subunit
+complex IV	ENSG00000198938	MT-CO3	subunit
+complex IV	ENSG00000131143	COX4I1	subunit
+complex IV	ENSG00000131055	COX4I2	subunit
+complex IV	ENSG00000178741	COX5A	subunit
+complex IV	ENSG00000135940	COX5B	subunit
+complex IV	ENSG00000111775	COX6A1	subunit
+complex IV	ENSG00000156885	COX6A2	subunit
+complex IV	ENSG00000126267	COX6B1	subunit
+complex IV	ENSG00000160471	COX6B2	subunit
+complex IV	ENSG00000164919	COX6C	subunit
+complex IV	ENSG00000161281	COX7A1	subunit
+complex IV	ENSG00000112695	COX7A2	subunit
+complex IV	ENSG00000131174	COX7B	subunit
+complex IV	ENSG00000170516	COX7B2	subunit
+complex IV	ENSG00000127184	COX7C	subunit
+complex IV	ENSG00000176340	COX8A	subunit
+complex IV	ENSG00000187581	COX8C	subunit
+complex IV	ENSG00000189043	NDUFA4	subunit (alias COXFA4)
+complex IV	ENSG00000187118	CMC1	assembly factor
+complex IV	ENSG00000106603	COA1	assembly factor
+complex IV	ENSG00000183978	COA3	assembly factor
+complex IV	ENSG00000181924	COA4	assembly factor
+complex IV	ENSG00000183513	COA5	assembly factor
+complex IV	ENSG00000168275	COA6	assembly factor
+complex IV	ENSG00000162377	COA7	assembly factor
+complex IV	ENSG00000166260	COX11	assembly factor
+complex IV	ENSG00000178449	COX14	assembly factor
+complex IV	ENSG00000133983	COX16	assembly factor
+complex IV	ENSG00000138495	COX17	assembly factor
+complex IV	ENSG00000163626	COX18	assembly factor
+complex IV	ENSG00000240230	COX19	assembly factor
+complex IV	ENSG00000203667	COX20	assembly factor
+complex IV	ENSG00000155463	OXA1L	assembly factor
+complex IV	ENSG00000133028	SCO1	assembly factor
+complex IV	ENSG00000130489	SCO2	assembly factor
+complex IV	ENSG00000148290	SURF1	assembly factor
+complex IV	ENSG00000144120	TMEM177	assembly factor
+complex IV	ENSG00000229833	PET100	assembly factor
+complex IV	ENSG00000232838	PET117	assembly factor
+complex IV	ENSG00000006695	COX10	essential for biosynthesis of heme O
+complex IV	ENSG00000014919	COX15	essential for biosynthesis of heme A
+complex IV	ENSG00000103121	CMC2	putative assembly factor
+complex V	ENSG00000198899	MT-ATP6	subunit
+complex V	ENSG00000228253	MT-ATP8	subunit
+complex V	ENSG00000152234	ATP5F1A	subunit
+complex V	ENSG00000110955	ATP5F1B	subunit
+complex V	ENSG00000099624	ATP5F1D	subunit
+complex V	ENSG00000124172	ATP5F1E	subunit
+complex V	ENSG00000165629	ATP5F1C	subunit
+complex V	ENSG00000241837	ATP5PO	subunit
+complex V	ENSG00000116459	ATP5PB	subunit
+complex V	ENSG00000159199	ATP5MC1	subunit
+complex V	ENSG00000135390	ATP5MC2	subunit
+complex V	ENSG00000154518	ATP5MC3	subunit
+complex V	ENSG00000167863	ATP5PD	subunit
+complex V	ENSG00000169020	ATP5ME	subunit
+complex V	ENSG00000241468	ATP5MF	subunit
+complex V	ENSG00000154723	ATP5PF	subunit
+complex V	ENSG00000167283	ATP5MG	subunit
+complex V	ENSG00000130770	ATP5IF1	subunit
+complex V	ENSG00000156411	ATP5MPL	subunit
+complex V	ENSG00000173915	ATP5MD	subunit
+complex V	ENSG00000123472	ATPAF1	assembly factor
+complex V	ENSG00000171953	ATPAF2	assembly factor
+complex V	ENSG00000175606	TMEM70	assembly factor
+complex V	ENSG00000125375	DMAC2L	assembly factor
+coenzyme Q	ENSG00000163050	ADCK3	biosynthesis of coenzyme Q (ubiquinone)
+coenzyme Q	ENSG00000123815	ADCK4	biosynthesis of coenzyme Q (ubiquinone)
+coenzyme Q	ENSG00000173085	COQ2	biosynthesis of coenzyme Q (ubiquinone)
+coenzyme Q	ENSG00000132423	COQ3	biosynthesis of coenzyme Q (ubiquinone)
+coenzyme Q	ENSG00000167113	COQ4	biosynthesis of coenzyme Q (ubiquinone)
+coenzyme Q	ENSG00000110871	COQ5	biosynthesis of coenzyme Q (ubiquinone)
+coenzyme Q	ENSG00000119723	COQ6	biosynthesis of coenzyme Q (ubiquinone)
+coenzyme Q	ENSG00000167186	COQ7	biosynthesis of coenzyme Q (ubiquinone)
+coenzyme Q	ENSG00000088682	COQ9	biosynthesis of coenzyme Q (ubiquinone)
+coenzyme Q	ENSG00000135469	COQ10A	Required for the function of coenzyme Q in the respiratory chain
+coenzyme Q	ENSG00000115520	COQ10B	Required for the function of coenzyme Q in the respiratory chain
+cytochrome c	ENSG00000172115	CYCS	cytochrome c
+cytochrome c	ENSG00000179091	CYC1	cytochrome c
+cytochrome c	ENSG00000004961	HCCS	cytochrome c assembly

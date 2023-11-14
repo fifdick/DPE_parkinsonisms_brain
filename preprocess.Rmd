@@ -1,0 +1,1554 @@
+---
+title: "Proteomics brain: PD/CT, parkinsonisms" 
+author: "Fiona Dick"
+output: 
+ rmdformats::material:  
+  self_contained: true
+  highlight: tango
+  use_bookdown: true
+  code_folding: hide
+  lightbox: true
+  gallery: true
+  fig_width: 8 
+  fig_height: 12   
+  number_sections: true 
+---
+
+<!--
+To convert Markdown document to HTML,
+R -e "rmarkdown::render('methods.Rmd')"
+-->
+
+```{r echo = FALSE}
+knitr::opts_chunk$set(message = FALSE,
+			warning = FALSE,
+			echo = FALSE)
+```
+
+```{r}
+      load("Rpackages") 
+#for (p in setdiff(packages, installed.packages()[,"Package"])) 
+#BiocManager::install(p) 
+```
+
+
+
+```{r dependencies, echo = FALSE}
+library(WGCNA)
+library(ensembldb)
+library(cowplot)
+library(boot)
+#library(mixOmics)
+#library(ggbiplot)
+library(tibble)
+#library(ermineR)
+library(ggpubr)
+library("DESeq2")
+require("ggplot2")
+require("kableExtra")
+require("ggfortify")
+require("readxl")
+require("magrittr")
+require("gridExtra")
+require("dplyr")
+require("tidyr")
+require("preprocessCore")         
+require("readr")
+require("knitr")
+require("kableExtra")
+require("ggpubr")
+require("stringr")
+require("pheatmap")
+require("RColorBrewer")
+require("ggrepel")
+require("patchwork")
+require("ggplotify")
+library("magrittr")
+#library(ComplexHeatmap)
+library(viridis)
+library(reshape2)
+library(pbapply)
+library(parallel)
+library(infer)
+library(lmtest)
+library(fgsea)
+
+filter <- dplyr::filter
+select  <- dplyr::select
+cols_sex = c("F" = "lightseagreen", "M" = "violetred4")
+cols_pd = c("PD" = "paleturquoise4", "Control" = "yellow3", "PSP" = "darkred", "MSA" = "chocolate1")
+source("./utils.R")
+oxphos <- readr::read_tsv("./data/oxphos.csv") 
+synapses <- c("HPCAL1", "SYT2", "NPTX1", "SYNII", "SYT", "SYP", "ERC2", "CDH13","CCK", "HPCA","DCLK1")
+library(fgsea)
+gmt.files <- c(GO = "./refData/GO_simplified_0.4.gmt",
+               Mitocarta3 = "./refData/mitocarta3.0_symbols.gmt",
+               KEGG = "./refData/c2.cp.kegg.v7.4.symbols.gmt")
+pathways <- lapply(gmt.files, fgsea::gmtPathways)
+names(pathways) <- names(gmt.files)
+mgp <- readr::read_csv("./data/kelley_2018_top100_markers.csv")
+mgp1 <- readr::read_csv("./data/velmeshev_2019_markers.csv")
+haris_g  <- c("SNCA", "LRRK2", "VPS35", "PRKN", "PINK1", "DJ1", "MAPT", "APP", "GBA", "LAMP2", "PDE10A", "TMEM175", "GCH1", "TH", "TDP43")
+```
+
+ Preprocessing and QC {.tabset .tabset-fade .tabset-pills}
+
+## Load and normalize proteomics data 
+
+Working on protein groups file (collaped peptides).  
+Possibility to work on peptides file for DTU etc.  
+If using **Abundances Normalized** we see clear batch and channel effects:  
+* PC1 separates Channels and the references are on the same position on PC1 axis  
+* PC2 clearly separates batches, batch F1 and F2 as a group and F3 and F4 as one  
+**Abundances Scaled** show no batch effect  
+After batch correction all references are exactly on the sampe postion in the PC1-PC2 space
+
+```{r}
+PD_out  <- readxl::read_excel("./data/20220822_EV_EVO_MWN_FAIMS_2CV_15cm_30SPD_#1480_HumanBrain_RTS_TMTpro_protein.xlsx")
+colnames(PD_out) %>% 
+	gsub(" F.*", "",.) %>%
+	gsub(" \\d+", "",.) %>%
+	gsub(" \\(\\d+","",.) %>%
+	table
+meta <- read_tsv("./data/metaData.csv")
+```
+
+```{r}
+	  
+PD_out %>%  
+    dplyr::select(Accession, Description, `# Peptides`,
+starts_with("Abundances (Scaled)"),
+		  # starts_with("Abundance Ratio:"),
+	    `Ensembl Gene ID`, `Gene Symbol`, `Protein FDR Confidence: Combined`) %>%
+    dplyr::rename(gene_id = `Ensembl Gene ID`, gene_name = `Gene Symbol`) -> dataDF
+##Clean up column names of abundances
+colnames(dataDF) <- gsub("Abundances \\(Scaled\\): ", "", colnames(dataDF))
+colnames(dataDF) <-  gsub(", ", ":", colnames(dataDF))
+colnames(dataDF)  <- gsub(": ", ":", colnames(dataDF))
+colnames(dataDF) <-  gsub("NORM MIX", "NORM_MIX", colnames(dataDF))
+colnames(dataDF) <-  gsub("Confidence:", "Confidence_", colnames(dataDF))
+colnames(dataDF) <-  gsub(" ", "_", colnames(dataDF))
+#create a metadata file which gives information on batch, channel and whether abundance is of a reference or real sample
+#can be matched with sample demo data
+
+dataDF %>% dplyr::select(starts_with("F")) %>% colnames %>%
+    data.frame(id = .) %>%
+    tidyr::separate(id, c("Batch","Channel","what", "sample_id"), sep = ":", remove = F) %>%
+    dplyr::mutate(sample_id = ifelse(sample_id == "NORM_MIX", "Ref", sample_id)) -> prot_meta
+
+prot_meta <- prot_meta %>%
+	dplyr::left_join(., meta %>% 
+			 mutate(sample_id = as.character(sample_id)),
+		 by = c("sample_id")) %>%
+	mutate(Batch_num = as.numeric(gsub("F", "", Batch))) %>%
+	mutate(Column = ifelse(Batch_num <7, "first", "second")) %>%
+	dplyr::mutate(FBatch = case_when(
+					 Pool == 1 ~ "F14",
+					 Pool == 2 ~ "F13",
+					 Pool == 3 ~ "F8",
+					 Pool == 4 ~ "F7",
+					 Pool == 5 ~ "F6",
+					 Pool == 6 ~ "F5",
+					 Pool == 7 ~ "F1",
+					 Pool == 8 ~ "F4",
+					 Pool == 9 ~ "F12",
+					 Pool == 10 ~ "F11",
+					 Pool == 11 ~ "F10",
+					 Pool == 12  ~ "F9")) #%>%
+#		dplyr::select(-Pool, - Label) 
+saveRDS(meta, "./data/rds/prot_meta_final.rds")
+write.table(meta, file = "./data/final_prot_meta.csv", quote = F, row.names = F)
+```
+## Filtering
+
+```{r}
+dataDF %>% 
+       dplyr::select(starts_with("F")) %>%
+         as.matrix %>% t -> m_raw
+colnames(m_raw) <- dataDF$Accession
+#bit unnecessary (basically dataDF)
+dataDF_raw <- dataDF
+
+m_raw %>%   
+    t %>%
+    as.data.frame %>%
+    dplyr::mutate(Accession = rownames(.)) %>%
+    dplyr::left_join(.,
+             dataDF_raw %>% dplyr::select(Accession, gene_id, gene_name),
+             by = "Accession") -> m_raw_antd
+dataDF %>%
+    dplyr::filter(Protein_FDR_Confidence_Combined == "High") -> dataDF
+
+```
+
+Number of proteins unfiltered `r nrow(dataDF_raw)`
+
+Number of proteins after removing low confidence proteins:
+
+`r nrow(dataDF)`
+
+
+
+```{r}
+prot_meta %>% 
+	#dplyr::filter(Diagnosis %in% c("PD", "Control")) %>%
+	mutate(sample_id = as.character(sample_id)) %>%
+    dplyr::filter(!sample_id %in% c("EMPTY")) %>%
+#this was missing previously
+    dplyr::filter(!grepl("NORM_MIX", id)) %>%  
+#    dplyr::pull(sample_id) %>%
+    dplyr::pull(id) %>%
+    as.character -> myids
+dataDF %>% 
+       dplyr::select(all_of(myids)) %>% 
+       as.matrix %>% t -> m
+#Zero in all samples
+#Choosing x only after I know the experiment design
+x <- 0.25
+stay <- which(!(colSums(is.na(m)) > x*nrow(m)))
+dataDF<- dataDF[stay,]
+#hist(colSums(is.na(m)))
+dataDF %>% 
+       dplyr::select(all_of(myids)) %>%
+       as.matrix %>% t -> m
+colnames(m) <- dataDF$Accession
+nrow(dataDF)
+```
+
+Number of proteins after removing "NA proteins": `r nrow(dataDF)`
+
+
+## lls Imputation 
+
+*Missing value estimation using local least squares (LLS). First, k variables (for Microarrya data usually the genes) are selected by pearson, spearman or kendall correlation coefficients. Then missing values are imputed by a linear combination of the k selected variables. The optimal combination is found by LLS regression. The method was first described by Kim et al, Bioinformatics, 21(2),2005.*  
+
+Question: Are proteins with NA values low abundance proteins?
+
+```{r}
+library(pcaMethods)
+colnames(m) <- dataDF$Accession
+#Plot to check expression of na proteins
+na_proteins <- which(colSums(is.na(m)) > 10)
+m %>% t %>% as.data.frame %>% 
+	dplyr::mutate(Accession = rownames(.)) %>%
+	dplyr::mutate(na_prot = ifelse(Accession %in% names(na_proteins), TRUE,
+				       FALSE)) %>%
+	rowwise() %>%
+	dplyr::mutate(median = median(c_across(starts_with("F")), na.rm = T))  %>%
+	ungroup() -> df
+ggplot(df, aes(x = na_prot, y = median)) +
+	geom_violin() +
+	geom_boxplot(width = .2) +
+	ggpubr::stat_compare_means() -> p1
+pcaMethods::nni(m, center = T, k = 300, method = "llsImpute", allGenes = T) -> result
+cObs  <- pcaMethods::completeObs(result)
+#plot to investigate negative values
+cObs[, colSums(cObs < 0) > 0]  %>%
+	as.data.frame %>%
+	dplyr::mutate(id = rownames(.)) %>%
+	reshape2::melt(.) %>% 
+	dplyr::left_join(., prot_meta, by = "id") %>%
+	dplyr::mutate(neg = ifelse(value < 0, T, F)) %>%
+	ggplot(., aes(x = Diagnosis, y = value)) +
+	geom_boxplot() +
+#	geom_jitter(aes(col = as.factor(day))) +
+	facet_wrap(~variable) -> p2 #not plotted
+#Removing these proteins
+cObs <- cObs[, colSums(cObs < 0) == 0]
+#dim(cObs)
+#Alternative 0 imputation:
+#cObs_z <- m
+#cObs_z[is.na(cObs_z)] <- 0
+p1 + labs(x = "Imputed value", y = "Median expression") + cowplot::theme_cowplot()
+```
+
+## Sample PCA
+
+```{r}
+pca <- prcomp(cObs[!grepl("NORM", rownames(cObs)),], scale = T)
+pca_df <- as.data.frame(pca$x) %>%
+	dplyr::mutate(id = rownames(.)) %>%
+	dplyr::left_join(., prot_meta, by = "id")
+ggplot(pca_df, aes(x = PC1, y = PC2, col = as.factor(Pool))) +
+	geom_point(size = 2) +
+	cowplot::theme_cowplot() +
+	labs(col = "Batch") -> p1
+ggplot(pca_df, aes(x = PC1, y = PC2, col = Channel)) +
+	geom_point() +
+	cowplot::theme_cowplot() -> p2
+ggplot(pca_df, aes(x = PC1, y = PC2, col = Diagnosis)) +
+	geom_point() +
+	cowplot::theme_cowplot() -> p3
+ggplot(pca_df, aes(x = PC1, y = PC2, col = Sex)) +
+	geom_point() +
+	cowplot::theme_cowplot() -> p4
+ggplot(pca_df, aes(x = PC1, y = PC2, col = Age)) +
+	geom_point() +
+	cowplot::theme_cowplot() -> p5
+ggplot(pca_df, aes(x = PC1, y = PC2, col = Column)) +
+	geom_point() +
+	cowplot::theme_cowplot() -> p6
+png("./Figures/S1.png")
+p1
+dev.off()
+```
+
+# Conclusion batch problems
+
+Remove individuals from Pool 6 (for now)
+
+```{r}
+prot_meta %>% filter(Pool == 6) %>% pull(id) -> outliers
+cObs <- cObs[!rownames(cObs) %in% outliers,]
+
+#Discovered a duplicated sample (happened when joining tables with pathology info), removing the line where braak is NA:
+duplicated_id <- pca_df[pca_df$id %>% duplicated,"id"]
+prot_meta %>% filter(id == duplicated_id)
+prot_meta <- prot_meta %>% filter(!(id == duplicated_id & is.na(Braak_LB)))
+#remove from pca_df
+pca_df <- pca_df %>% filter(!(id == duplicated_id & is.na(Braak_LB)))
+
+
+
+
+rownames(pca_df) <- pca_df$id
+pca_df <- pca_df[rownames(cObs),] 
+prot_meta <- prot_meta %>% filter(!id %in% outliers)
+```
+
+
+```{r}
+meta_ <- prot_meta %>%
+	filter(!is.na(Diagnosis), !id %in% outliers) 
+rownames(meta_) <- meta_$id
+m  <- cObs[rownames(meta_),]
+saveRDS(m, "./data/rds/m_nooutlier_filtered_imputed.rds")
+meta_ <- meta_ %>%
+	mutate(Pool_fac = as.factor(Pool))
+```
+
+
+# Celltypes {.tabset .tabset-fade .tabset-pills}
+
+```{r}
+set.seed(123)
+```
+
+
+## Neurons
+
+```{r}
+res <- cellEstimates(m, df = meta_, celltype = "Neurons", highest = -0.15, lowest = -Inf, minus = T, mgp, dataDF)
+res$plot 
+meta_ <- meta_ %>%
+	select(-contains("neurons"))
+meta_ <- meta_ %>%
+	dplyr::left_join(.,
+			 res[["estimate"]] %>% dplyr::rename(neurons = mgp) %>% select(id, neurons),
+			 by = "id")
+lm("neurons ~ Diagnosis + Age + Batch + Sex + Sex:Diagnosis", data = meta_) %>% summary
+```
+
+### Neuron subtypes
+
+Save all these subtype as estimates in meta _ 
+then makke a heat map where columns are samples and rows are mgps
+is there a pattern for lower values for deeper layer neurons?
+
+```{r}
+add_est_meta <- function(mydf, cell_type, res) {
+	print(cell_type)
+	mydf <- mydf[,colnames(mydf) != cell_type] %>%
+		select(-any_of(cell_type))
+	print(colnames(mydf))
+	mydf <- mydf %>%
+		dplyr::left_join(., 
+				 (res[["estimate"]] %>%
+					 dplyr::rename(!!cell_type := mgp) %>%
+					 select(id, cell_type)),
+			 	by = "id")
+	print(colnames(mydf))
+	return(mydf)
+} 
+
+mgp1 %>% pull(cell_type) %>% unique
+chosen_subtypes <- c("L2/3", "L4",  "L5/6", "IN-PV", "IN-SST" ,  "IN-VIP" , "IN-SV2C") 
+
+
+res <- cellEstimates(m, df = meta_, celltype = chosen_subtypes[1], highest = -.15, lowest =-Inf, minus = F, mgp1, dataDF)
+res$plot
+meta_ <- add_est_meta(meta_, chosen_subtypes[1], res)
+
+res <- cellEstimates(m, df = meta_, celltype = chosen_subtypes[2], highest = -0.15, lowest = -Inf, minus = T, mgp1, dataDF)
+res$plot
+meta_ <- add_est_meta(meta_, chosen_subtypes[2], res)
+
+res <- cellEstimates(m, df = meta_, celltype = chosen_subtypes[3], highest = -.15, lowest =-Inf, minus = T, mgp1, dataDF)
+res$plot
+meta_ <- add_est_meta(meta_, chosen_subtypes[3], res)
+
+res <- cellEstimates(m, df = meta_, celltype = chosen_subtypes[4], highest = Inf, lowest =.15, minus = F, mgp1, dataDF)
+res$plot
+meta_ <- add_est_meta(meta_, chosen_subtypes[4], res)
+
+res <- cellEstimates(m, df = meta_, celltype = chosen_subtypes[5], highest = -0.15, lowest = -Inf, minus = T, mgp1, dataDF)
+res$plot
+meta_ <- add_est_meta(meta_, chosen_subtypes[5], res)
+
+res <- cellEstimates(m, df = meta_, celltype = chosen_subtypes[6], highest = -.15, lowest =-Inf, minus = T, mgp1, dataDF)
+res$plot
+meta_ <- add_est_meta(meta_, chosen_subtypes[6], res)
+
+res <- cellEstimates(m, df = meta_, celltype = chosen_subtypes[7], highest = -0.15, lowest = -Inf, minus = T, mgp1, dataDF)
+res$plot
+meta_ <- add_est_meta(meta_, chosen_subtypes[7], res)
+head(meta_)
+```
+
+deep layer neurons are diff expr.
+
+
+# Synapse
+
+(PSD95, GAP43, VGLUT1).
+NOT DONE
+
+## Endothelial
+
+```{r}
+res <- cellEstimates(m, df = meta_, celltype = "Endothelial", highest = -0.15, lowest = -Inf, minus = F, mgp1, dataDF)
+res$plot
+meta_ <- meta_ %>%
+	select(-contains("endothelial"))
+meta_ <- meta_ %>%
+	dplyr::left_join(.,
+			 res[["estimate"]] %>% dplyr::rename(endothelial = mgp) %>% select(id, endothelial),
+			 by = "id")
+lm("endothelial ~ Diagnosis + Age + Batch + Sex + Sex:Diagnosis", data = meta_) %>% summary
+```
+
+
+## Oligodendrocytes
+
+```{r}
+res <- cellEstimates(m, df = meta_, celltype = "Oligodendrocytes", highest = Inf, lowest = 0.15, minus = F, mgp, dataDF)
+res$plot
+meta_ <- meta_ %>%
+	select(-contains("oligos"))
+meta_ <- meta_ %>%
+	dplyr::left_join(.,
+			 res[["estimate"]] %>% dplyr::rename(oligos = mgp),
+			 by = "id")
+lm("oligos ~ Diagnosis + Age + Batch + Sex + Sex:Diagnosis", data = meta_) %>% summary
+```
+
+
+## Microglia
+
+```{r}
+res <- cellEstimates(m, df = meta_, celltype = "Microglia", highest = Inf, lowest = 0.2, minus = F, mgp, dataDF)
+res$plot
+meta_ <- meta_ %>%
+	select(-contains("microglia"))
+meta_ <- meta_ %>%
+	dplyr::left_join(.,
+			 res[["estimate"]] %>% dplyr::rename(microglia = mgp),
+			 by = "id")
+lm("microglia ~ Diagnosis + Age + Batch + Sex + Sex:Diagnosis", data = meta_) %>% summary
+```
+
+## Astrocytes
+
+
+```{r}
+res <- cellEstimates(m, df = meta_, celltype = "Astrocytes", highest = Inf, lowest = 0.15, minus = F, mgp, dataDF)
+res$plot
+meta_ <- meta_ %>%
+	select(-contains("astrocytes"))
+meta_ <- meta_ %>%
+	dplyr::left_join(.,
+			 res[["estimate"]] %>% dplyr::rename(astrocytes = mgp),
+			 by = "id")
+lm("astrocytes ~ Diagnosis + Age + Batch + Sex + Sex:Diagnosis", data = meta_) %>% summary
+```
+
+## Summary differences diagnosis
+Figure 2A
+
+```{r}
+meta_ %>%
+	dplyr::filter(!is.na(Diagnosis)) %>%
+	dplyr::select(id,neurons, astrocytes, microglia, Sex, Diagnosis, oligos, endothelial) %>%
+	reshape2::melt(., id.vars = c("id", "Sex", "Diagnosis")) -> df
+levels(df$variable)
+levels(df$variable) <- c("Neurons", "Astrocytes", "Microglia", "Oligodendrocytes",
+			 "Endothelial cells")
+df <- df %>%
+	mutate(variable_ordered = factor(variable, levels = c("Astrocytes",
+						      "Endothelial cells", 
+						      "Microglia",
+						      "Neurons",
+						      "Oligodendrocytes")))
+
+ggplot(df, aes( x = Diagnosis, y = value, col = Diagnosis)) +
+	geom_boxplot(width = .2, fill = "transparent", outlier.shape = NA) +
+	ggbeeswarm::geom_beeswarm(size = .5) + 
+	ggpubr::stat_compare_means(comparisons = list(c("PSP", "Control"),
+						    #  c("PSP", "PD"),
+						      c("Control", "PD"),
+						     # c("MSA", "PD"),
+						      c("MSA", "Control"))) +
+						      #c("AD", "Control"),
+						      #c("PDAD", "Control"))) +	
+	facet_wrap(~variable_ordered, scales = "free") +
+#	facet_grid(rows = vars(variable), cols = vars(cohort), scales = "free") +
+	scale_color_manual(values = cols_pd) +
+	theme_cowplot() -> Fig2A
+Fig2A
+```
+
+Figure 2B
+
+```{r}
+meta_ %>%
+	dplyr::filter(!is.na(Diagnosis)) %>%
+	dplyr::select(id,chosen_subtypes, Diagnosis, Sex) %>%
+	reshape2::melt(., id.vars = c("id", "Sex", "Diagnosis")) %>%
+	mutate(variable = factor(variable, levels = c(chosen_subtypes[1:3],
+						      "IN-VIP",
+						      "IN-SV2C",
+						      "IN-SST",
+						      "IN-PV"))) %>%
+	ggplot(., aes( x = Diagnosis, y = value, col = Diagnosis)) +
+	geom_boxplot(width = .2, fill = "transparent", outlier.shape = NA) +
+	ggbeeswarm::geom_beeswarm(size = .5) + 
+	ggpubr::stat_compare_means(comparisons = list(c("PSP", "Control"),
+						    #  c("PSP", "PD"),
+						      c("Control", "PD"),
+						     # c("MSA", "PD"),
+						      c("MSA", "Control"))) +
+						      #c("AD", "Control"),
+						      #c("PDAD", "Control"))) +	
+						  
+	facet_wrap(~variable, scales = "free") +
+	scale_color_manual(values = cols_pd) +
+	labs(y = "MPG estimate", tag = "B") +
+	theme_cowplot() -> Fig2B
+```
+
+
+
+## Correlation celltypes
+
+```{r}
+meta_ %>% 
+	dplyr::filter(Diagnosis == "PD") %>%
+	select(neurons, astrocytes, oligos, endothelial, microglia) %>%
+	dplyr::rename(Neurons = neurons,
+		      Astrocytes = astrocytes,
+		      `Endothelial cells` = endothelial,
+		      Microglia = microglia,
+		      Oligodendrocytes = oligos) %>%
+		cor(., use = "pairwise") %>%
+	ggcorrplot::ggcorrplot(., hc.order = T, outline.col = "white", lab = T, type = "upper") +
+ theme(axis.text.x = element_text(margin=margin(-2,0,0,0)),  # Order: top, right, bottom, left
+        axis.text.y = element_text(margin=margin(0,-2,0,0)),
+	 panel.border = element_rect(colour = cols_pd["PD"], fill=NA, linewidth=2))  +
+  geom_vline(xintercept=1:4-0.5, colour="white", size=2) +
+  geom_hline(yintercept=1:4-0.5, colour="white", size=2) +
+   annotate(geom="text", x=3.6, y=1.8, label="N = 73 PD",
+              color=cols_pd["PD"]) -> p1
+meta_ %>% 
+	dplyr::filter(Diagnosis == "Control") %>%
+	select(neurons, astrocytes, oligos, endothelial, microglia) %>%
+	dplyr::rename(Neurons = neurons,
+		      Astrocytes = astrocytes,
+		      `Endothelial cells` = endothelial,
+		      Microglia = microglia,
+		      Oligodendrocytes = oligos) %>%
+		cor(., use = "pairwise") %>%
+	ggcorrplot::ggcorrplot(., hc.order = T, outline.col = "white", lab = T, type = "upper") +
+ theme(axis.text.x = element_text(margin=margin(-2,0,0,0)),  # Order: top, right, bottom, left
+        axis.text.y = element_text(margin=margin(0,-2,0,0)),
+	 panel.border = element_rect(colour = cols_pd["Control"], fill=NA, linewidth=2))  +
+  geom_vline(xintercept=1:4-0.5, colour="white", size=2) +
+  geom_hline(yintercept=1:4-0.5, colour="white", size=2) +
+   annotate(geom="text", x=3.6, y=1.8, label="N = 73 Control",
+              color=cols_pd["Control"]) +
+labs(tag = "C") -> p2
+meta_ %>% 
+	dplyr::filter(Diagnosis == "PSP") %>%
+	select(neurons, astrocytes, oligos, endothelial, microglia) %>%
+	dplyr::rename(Neurons = neurons,
+		      Astrocytes = astrocytes,
+		      `Endothelial cells` = endothelial,
+		      Microglia = microglia,
+		      Oligodendrocytes = oligos) %>%
+		cor(., use = "pairwise") %>%
+	ggcorrplot::ggcorrplot(., hc.order = T, outline.col = "white", lab = T, type = "upper") +
+ theme(axis.text.x = element_text(margin=margin(-2,0,0,0)),  # Order: top, right, bottom, left
+        axis.text.y = element_text(margin=margin(0,-2,0,0)),
+	 panel.border = element_rect(colour = cols_pd["PSP"], fill=NA, linewidth=2))  +
+  geom_vline(xintercept=1:4-0.5, colour="white", size=2) +
+  geom_hline(yintercept=1:4-0.5, colour="white", size=2) +
+  annotate(geom="text", x=3.6, y=1.8, label="N = 18 PSP",
+              color=cols_pd["PSP"]) -> p3
+meta_ %>% 
+	dplyr::filter(Diagnosis == "MSA") %>%
+	select(neurons, astrocytes, oligos, endothelial, microglia) %>%
+	dplyr::rename(Neurons = neurons,
+		      Astrocytes = astrocytes,
+		      `Endothelial cells` = endothelial,
+		      Microglia = microglia,
+		      Oligodendrocytes = oligos) %>%
+		cor(., use = "pairwise") %>%
+	ggcorrplot::ggcorrplot(., hc.order = T, outline.col = "white", lab = T, type = "upper") +
+ theme(axis.text.x = element_text(margin=margin(-2,0,0,0)),  # Order: top, right, bottom, left
+        axis.text.y = element_text(margin=margin(0,-2,0,0)),
+	 panel.border = element_rect(colour = cols_pd["MSA"], fill=NA, linewidth=2))  +
+  geom_vline(xintercept=1:4-0.5, colour="white", size=2) +
+  geom_hline(yintercept=1:4-0.5, colour="white", size=2) +
+  annotate(geom="text", x=3.6, y=1.8, label="N = 17 MSA",
+              color=cols_pd["MSA"]) -> p4
+
+ Fig2C <- (p2 + p4) / (p1 + p3)
+```
+
+Figure 2
+```{r}
+pdf("./Figures/Figure2.pdf", height = 32, width =  14.5)
+((Fig2A + labs(y = "MGP estimate", tag = "A")) / 
+ (Fig2B + labs(y = "MGP estimate", tag = "B")) /
+  (Fig2C + labs(tag = "C"))) + plot_layout(heights = c(1.2,1.4,1))
+dev.off()
+```
+
+
+
+## SV analysis
+
+PC3 is highly correlated with Batches and diagnosis. 
+If we make a basemodel where diagnosis is specified then SV can find the remaining noise, summarising the bias of the batches into one variable
+Should we also add cell types to the base model?
+
+```{r}
+M1  <- model.matrix(~ Age + Sex + Diagnosis, data = meta_)
+M0  <-  model.matrix(~ 1 , data = meta_)
+svdf  <- sva::sva(log1p(t(m)), M1, M0, n.sv = 2)
+svdf$sv %>% 
+	as.data.frame %>%
+	dplyr::rename(S1 = V1, S2 = V2) %>%
+	mutate(id = rownames(m)) -> svdf
+dplyr::left_join(svdf, meta_, by = "id") %>%
+	ggplot(., aes(x = S1, y = S2, col = as.factor(Pool))) +
+	geom_point() +
+	cowplot::theme_cowplot()
+dplyr::left_join(svdf, meta_, by = "id") %>%
+	dplyr::select(where(is.numeric), -old_Pool) %>%
+	cor %>%
+	ggcorrplot::ggcorrplot(., hc.order = T, outline.col = "white", lab = T, type = "upper") +
+ theme(axis.text.x = element_text(margin=margin(-2,0,0,0)),  # Order: top, right, bottom, left
+        axis.text.y = element_text(margin=margin(0,-2,0,0))) 
+
+lm(S1 ~ Pool_fac, dplyr::left_join(svdf, meta_, by = "id"))  %>% summary
+```
+
+S1 strongest correlation with neurons
+Iteration II
+
+```{r}
+M1  <- model.matrix(~ Age + Sex + Diagnosis + neurons, data = meta_)
+M0  <-  model.matrix(~ 1 , data = meta_)
+svdf  <- sva::sva(log1p(t(m)), M1, M0, n.sv = 2)
+svdf$sv %>% 
+	as.data.frame %>%
+	dplyr::rename(S1 = V1, S2 = V2) %>%
+	mutate(id = rownames(m)) -> svdf
+dplyr::left_join(svdf, meta_, by = "id") %>%
+	ggplot(., aes(x = S1, y = S2, col = as.factor(Pool))) +
+	geom_point() +
+	cowplot::theme_cowplot()
+dplyr::left_join(svdf, meta_, by = "id") %>%
+	dplyr::select(where(is.numeric), -old_Pool) %>%
+	cor %>%
+	ggcorrplot::ggcorrplot(., hc.order = T, outline.col = "white", lab = T, type = "upper") +
+ theme(axis.text.x = element_text(margin=margin(-2,0,0,0)),  # Order: top, right, bottom, left
+        axis.text.y = element_text(margin=margin(0,-2,0,0))) 
+ lm(S2 ~ Batch, dplyr::left_join(svdf, meta_, by = "id")) %>% summary
+```
+STRONG POOL effects!!
+S1 strongest correlation with endothelials
+First adding Pool
+
+Iteration III
+
+```{r}
+M1  <- model.matrix(~ Age + Sex + Diagnosis  + neurons + Pool_fac, data = meta_)
+M0  <-  model.matrix(~ 1 , data = meta_)
+svdf  <- sva::sva(log1p(t(m)), M1, M0, n.sv = 2)
+svdf$sv %>% 
+	as.data.frame %>%
+	dplyr::rename(S1 = V1, S2 = V2) %>%
+	mutate(id = rownames(m)) -> svdf
+dplyr::left_join(svdf, prot_meta, by = "id") %>%
+	ggplot(., aes(x = S1, y = S2, col = as.factor(Pool))) +
+	geom_point() +
+	cowplot::theme_cowplot()
+dplyr::left_join(svdf, meta_, by = "id") %>%
+	dplyr::select(where(is.numeric), -old_Pool) %>%
+	cor %>%
+	ggcorrplot::ggcorrplot(., hc.order = T, outline.col = "white", lab = T, type = "upper") +
+ theme(axis.text.x = element_text(margin=margin(-2,0,0,0)),  # Order: top, right, bottom, left
+        axis.text.y = element_text(margin=margin(0,-2,0,0))) 
+ meta_ <- meta_ %>%
+	left_join(., svdf, by = "id")
+meta_ <- meta_ %>% select(-S1, -S2)
+lm(S1 ~ Pool_fac, dplyr::left_join(svdf, meta_, by = "id")) %>% summary
+```
+Pool12 still associated with S1
+Strongest correlation with cell types: endotheliali
+
+Iteration IV
+Adding endothelials
+
+```{r}
+M1  <- model.matrix(~ Age + Sex + Diagnosis + neurons + endothelial + Pool_fac, data = meta_)
+M0  <-  model.matrix(~ 1 , data = meta_)
+svdf  <- sva::sva(log1p(t(m)), M1, M0, n.sv = 2)
+svdf$sv %>% 
+	as.data.frame %>%
+	dplyr::rename(S1 = V1, S2 = V2) %>%
+	mutate(id = rownames(m)) -> svdf
+dplyr::left_join(svdf, prot_meta, by = "id") %>%
+	ggplot(., aes(x = S1, y = S2, col = as.factor(Diagnosis))) +
+	geom_point() +
+	cowplot::theme_cowplot()
+dplyr::left_join(svdf, meta_, by = "id") %>%
+	dplyr::select(where(is.numeric), -old_Pool) %>%
+	#select(-Duration, -Height, -Weight, -brain_weight) %>%
+	cor %>% 
+	ggcorrplot::ggcorrplot(., hc.order = T, outline.col = "white", lab = T, type = "upper") +
+ theme(axis.text.x = element_text(margin=margin(-2,0,0,0)),  # Order: top, right, bottom, left
+        axis.text.y = element_text(margin=margin(0,-2,0,0))) 
+meta_ <- meta_ %>% select(-S1,-S2)
+meta_ <- meta_ %>%
+	left_join(., svdf, by = "id")
+
+# double check that cohort is not associated 
+lm(S1 ~ Cohort, meta_) %>% summary
+```
+No strong correlation with S1 left
+
+# DPE
+
+Moving on to DPE using neurons, endothelials and Pool_fac as covariates, having excluded pool6 and using log scaled values
+
+
+## Model definition
+
+```{r}
+myids <- meta_ %>% filter(!is.na(Diagnosis)) %>% pull(id)
+saveRDS(meta_, "./data/rds/meta_obj_final.rds")
+rownames(meta_) <- meta_$id
+M4 <- model.matrix(~ Pool_fac + neurons + endothelial + Age + Sex + Diagnosis, data = meta_[myids,]) 
+```
+
+## PD vs CT
+
+```{r}
+set.seed(123)
+```
+
+
+```{r}
+pd <- dpe_enrich_plot(m[myids,], M4, myVar = "DiagnosisPD", pthres = 0.05, addLabel = T, leadThres = 3)
+pd[[4]] %>% arrange(desc(abs(NES))) %>% filter(padj < 0.05) %>% print(n = Inf)
+pd[[2]]
+pd[[3]]
+pd[[1]] %>% filter(adj.P.Val < 0.05) %>% arrange(desc(abs(logFC))) %>% head(n = 50)
+```
+
+
+
+## MSA
+
+
+```{r}
+msa <- dpe_enrich_plot(m[myids,], M4, myVar = "DiagnosisMSA", pthres = 0.05, addLabel = T, leadThres = 3)
+msa[[4]] %>% filter(padj < 0.05) %>% arrange(desc(abs(NES))) %>% print(n = Inf) 
+msa[[2]]
+msa[[3]]
+msa[[1]] %>% filter(adj.P.Val < 0.05) %>% arrange(desc(abs(logFC))) %>% head(n = 50)
+```
+
+## PSP
+
+
+```{r}
+psp <- dpe_enrich_plot(m[myids,], M4, myVar = "DiagnosisPSP", pthres = 0.05, addLabel = T, leadThres = 3)
+psp[[4]] %>% filter(padj < 0.05) %>% arrange(desc(abs(NES))) %>% print(n = Inf)
+psp[[2]]
+psp[[3]]
+psp[[1]] %>% filter(adj.P.Val < 0.05) %>% arrange(desc(abs(logFC))) %>% head(n = 50)
+```
+
+Figure S2
+
+```{r}
+types <- c("Collagens", "Mitochondrial ribosome", "Other", "Synapse", "V-type ATPases", "Ribosomal",
+	  "Laminin", "Neuron marker", "Proteasome", "Oligo marker", "Mitochondrial resipratory chain", "Lysosome a. mem. prot")
+
+
+col_fun <- rainbow(length(types),alpha = .54, rev =T)
+names(col_fun) <- types
+
+
+pdf("./Figures/FigureS2.pdf", width = 22, height = 14)
+(pd[[3]] + scale_fill_manual(values = col_fun) +
+	labs(tag = "A", y = "In leading edge of # pathways") +
+	theme(legend.position = "bottom")) /
+(psp[[3]] + scale_fill_manual(values = col_fun) +
+ 	labs(tag = "B", y = "In leading edge of # pathways") +
+	theme(legend.position = "bottom")) /
+(msa[[3]] + scale_fill_manual(values = col_fun, drop = F) +
+ 	labs(tag = "C", y = "In leading edge of # pathways") +
+	theme(legend.position = "bottom"))
+dev.off()
+```
+
+
+
+## Overlap of genes
+
+```{r}
+library(UpSetR)
+sigProts  <- list("PDvsCT" = pd[[1]] %>% filter(adj.P.Val < 0.05) %>% pull(Accession),
+		  "PSPvsCT" = psp[[1]] %>% filter(adj.P.Val < 0.05) %>% pull(Accession),
+		  "MSAvsCT" = msa[[1]] %>% filter(adj.P.Val < 0.05) %>% pull(Accession))
+
+UpSetR::upset(UpSetR::fromList(sigProts), sets.bar.color = "#56B4E9",
+order.by = "freq", empty.intersections = "on",
+	      queries = list(list(query = intersects, params = list("MSAvsCT", "PSPvsCT", "PDvsCT"), active = T, color = "orange")))  -> p1
+ ggplotify::as.ggplot(p1) -> p1
+
+
+sigInALL <- Reduce(intersect, sigProts)
+pd[[1]] %>%
+#	filter(gene_name %in% sigInALL) %>%
+	select(Accession, gene_name, logFC, Rank, P.Value) %>%
+	mutate(gene_name = as.character(gene_name)) %>%
+	mutate(Disease = "PD") -> a
+psp[[1]] %>%
+#	filter(gene_name %in% sigInALL) %>%
+	select(Accession, gene_name, logFC, Rank, P.Value) %>%
+	mutate(gene_name = as.character(gene_name)) %>%
+	mutate(Disease = "PSP") -> b
+msa[[1]] %>%
+#	filter(gene_name %in% sigInALL) %>%
+	select(Accession, gene_name, logFC, Rank, P.Value) %>%
+	mutate(gene_name = as.character(gene_name)) %>%
+	mutate(Disease = "MSA") -> d
+
+do.call(rbind, list(a,b,d)) %>%
+	mutate(pid = paste0(gene_name, "_", Accession)) %>%
+	mutate(Diagnosis = factor(Disease, levels = c("PD", "PSP", "MSA"))) -> plotdf
+plotdf %>%
+filter(Accession %in% sigInALL) %>% 
+#	left_join(., dataDF %>% select(Accession, gene_name), by = "Accession") %>%
+	ggplot(., aes(x = Diagnosis, y = log(Rank), col = gene_name)) +
+	geom_point(aes(size = logFC)) +
+	coord_flip() +
+	geom_line(aes(group = gene_name), size = 0.1) +
+	theme_cowplot() -> p2
+#		theme(legend.position = "bottom") -> p2 
+	 #scale_colour_gradient2(low = "blue", mid = "white", high = "red") 
+#	facet_wrap(~pid, scale = "free")
+
+## Nom sig
+sigProts_nom  <- list("PDvsCT" = pd[[1]] %>% filter(P.Value < 0.05) %>% pull(Accession),
+		  "PSPvsCT" = psp[[1]] %>% filter(P.Value < 0.05) %>% pull(Accession),
+		  "MSAvsCT" = msa[[1]] %>% filter(P.Value < 0.05) %>% pull(Accession))
+
+UpSetR::upset(UpSetR::fromList(sigProts_nom),
+	      sets.bar.color = "#56B4E9",
+	      order.by = "freq",
+	      empty.intersections = "on",
+	      queries = list(list(query = intersects, params = list("MSAvsCT", "PSPvsCT", "PDvsCT"), active = T, color = "orange"))) -> p3
+ ggplotify::as.ggplot(p3) -> p3
+sigInALL_nom <- Reduce(intersect, sigProts_nom)
+
+plotdf %>%
+	filter(Accession %in% sigInALL_nom) %>%
+	select(Accession, logFC, Diagnosis) %>%
+	pivot_wider(., id_cols = c("Accession"), names_from = "Diagnosis", values_from = "logFC") %>%
+ggplot(., aes(x = PD, y = PSP, col = MSA)) +
+geom_point(size = 0.8) +
+geom_vline(xintercept = 0, col = "grey", lty = 2) +
+geom_hline(yintercept = 0, col = "grey", lty = 2) +
+stat_cor() +
+scale_color_viridis() +
+theme_cowplot() +
+geom_rug(col = "orange") +
+labs(col = "LFC MSA") +
+theme(text = element_text(size = 9)) -> p4.1
+plotdf %>%
+	filter(Accession %in% sigInALL_nom) %>%
+	select(Accession, logFC, Diagnosis) %>%
+	pivot_wider(., id_cols = c("Accession"), names_from = "Diagnosis", values_from = "logFC") %>%
+ggplot(., aes(x = PD, y = MSA, col = PSP)) +
+geom_point(size = .8) +
+stat_cor() +
+geom_vline(xintercept = 0, col = "grey", lty = 2) +
+geom_hline(yintercept = 0, col = "grey", lty = 2) +
+scale_color_viridis() +
+theme_cowplot() + 
+labs(col = "LFC PSP") +
+geom_rug(col = "orange") +
+theme(text = element_text(size = 9)) -> p4.2
+plotdf %>%
+	filter(Accession %in% sigInALL_nom) %>%
+	select(Accession, logFC, Diagnosis) %>%
+	pivot_wider(., id_cols = c("Accession"), names_from = "Diagnosis", values_from = "logFC") %>%
+ggplot(., aes(x = MSA, y = PSP, col = PD)) +
+geom_point(size = .8) +
+geom_vline(xintercept = 0, col = "grey", lty = 2) +
+geom_hline(yintercept = 0, col = "grey", lty = 2) +
+stat_cor() +
+scale_color_viridis() +
+theme_cowplot() +
+geom_rug(col = "orange") +
+labs(col = "LFC PD") +
+ theme(text = element_text(size = 9)) -> p4.3
+p4 <- p4.1 + p4.2 + p4.3 + plot_layout(ncol = 2)
+
+
+(p1 + plot_spacer() + p3 + plot_layout(widths = c(0.4,.2,0.4))) / ((p2 | p4) + plot_layout(widths = c(0.4, 0.6), heights = c(1,2.4))) ->Fig3B
+pdf("./Figures/Figure3.pdf", height = 11.5, width = 14)
+Fig3B
+dev.off()
+```
+
+Common proteins (nomsiginall)
+
+```{r}
+plotdf %>% 
+filter(Accession %in% sigInALL_nom) %>%
+	select(Accession, logFC, Diagnosis) %>%
+	pivot_wider(., id_cols = c("Accession"), names_from = "Diagnosis", values_from = "logFC") %>%
+#	filter(PSP > 0 & PD > 0 & MSA > 0) %>%
+	dplyr::left_join(., (dataDF_raw %>% select(gene_name, Accession)), by = "Accession") %>%
+	filter(!is.na(gene_name)) -> df
+library(WebGestaltR)
+runEnrich(pd[[1]], myGenes = df$gene_name) 
+```
+
+Proteins negative in PD but positive in PSP
+
+```{r}
+plotdf %>% 
+filter(Accession %in% sigInALL_nom) %>%
+	select(Accession, logFC, Diagnosis) %>%
+	pivot_wider(., id_cols = c("Accession"), names_from = "Diagnosis", values_from = "logFC") %>%
+	filter(PSP > 0 & PD < 0) %>%
+	dplyr::left_join(., (dataDF_raw %>% select(gene_name, Accession)), by = "Accession") -> df
+library(WebGestaltR)
+runEnrich(pd[[1]], myGenes = df$gene_name) 
+```
+
+# PD - Braak alphasyn
+
+
+```{r}
+meta_ <- meta_ %>% mutate(Braak_LB = as.numeric(Braak_LB))
+myids <- meta_ %>% filter(Diagnosis %in% c("PD"), !is.na(Braak_LB)) %>% pull(id)
+prcomp(log1p(m[myids, ]), scale = T)$x %>%
+ as.data.frame(.) %>% mutate(id = rownames(.)) %>%
+dplyr::left_join(., meta_, by = "id") -> pcadf
+ggplot(pcadf, aes(PC1, PC2))  +
+geom_point(aes(col = Pool_fac)) +
+theme_cowplot()
+lm("PC1 ~ Pool_fac + Sex + Age + Braak_LB", data = pcadf) %>% summary
+lm("PC2 ~ Pool_fac", data = pcadf) %>% summary
+
+#Although PC2 is associated with nearly all batches, it only explains 5% of variance and since it is not associates with any other variable, I will add PC2 instead of the batches
+
+rownames(meta_)  <-  meta_$id
+M5 <- model.matrix(~  PC2 + neurons + endothelial + Age + Sex + Braak_LB, data = meta_[myids,] %>%
+		   left_join(., pcadf %>% select(id, PC2), by = "id"))
+braak <- dpe_enrich_plot(m[myids,], M5, myVar = "Braak_LB", pthres = 0.05, addLabel = T)
+braak[[4]] %>% filter(padj < 0.05) %>% arrange(desc(abs(NES)))  %>% print(n = 50)
+
+braak[[1]] %>% filter(grepl("MRP", gene_name) & P.Value < 0.05) %>% mutate(p.bon = p.adjust(P.Value, method = "bonferroni"))  %>% select(gene_name, logFC, p.bon)
+
+braak[[2]]
+braak[[3]] + labs(tag = "A") + theme(legend.position = "bottom")-> Fig5A
+Fig5A
+```
+```{r}
+#plot expression of NDUFS4 by Braak LB
+my_gene = "NDUFS4"
+myGene <- pd[[1]] %>% filter(gene_name == my_gene) %>% pull(Accession)
+ log1p(m)[,myGene] %>% 
+	data.frame(id = names(.), value = .) %>% 
+#	reshape2::melt(., id.vars = c("id")) %>% 
+	left_join(., meta_, by = "id")  %>%
+	mutate(id_label = ifelse(Diagnosis %in% c("Control", "PD"), id, NA)) -> df
+
+
+ggplot(df %>% filter(!is.na(Braak_LB), Diagnosis %in% c("PD")) ,aes(x = as.factor(Braak_LB), y  = value)) +
+
+	ggbeeswarm::geom_beeswarm(size = 1, aes(col = neurons)) +
+	geom_boxplot(width = .3, fill = "transparent") +
+	theme_cowplot() +
+#	facet_wrap(~Diagnosis) +
+	scale_color_viridis() + 
+	labs(y = "NDUFS4 protein expression" , tag = "C", x = "Braak LB", col = "Neuron estimate")  -> Fig5C
+
+ggplot((df %>% filter(Diagnosis %in% c("Control", "PD"))),aes(x = Age, y  = value)) +
+	geom_point(size = 1, aes(col = neurons)) +
+	#geom_boxplot(width = .3, fill = "transparent") +
+	theme_cowplot() +
+	facet_wrap(~Diagnosis) +
+	ggpubr::stat_cor() +
+	geom_smooth(method = "lm", se = F) +
+	facet_wrap(~Diagnosis) +
+	scale_color_viridis() + 
+	labs(y = "NDUFS4 protein expression" , tag = "D", x = "Age", col = "Neuron estimate")  -> Fig5D
+
+pdf("./Figures/Figure5.pdf", width = 16, height = 10)
+Fig5A |	(Fig5C / Fig5D) | plot_layout(width = c(3,1))
+dev.off()
+```
+
+## PSP - Braak_NFT
+
+```{r}
+meta_ <- meta_ %>% mutate(Braak_NFT = as.numeric(Braak_NFT))
+myids <- meta_ %>% filter(Diagnosis %in% c("PSP"), !is.na(Braak_NFT)) %>% pull(id)
+meta_[myids,] %>% select(Braak_NFT) %>% ggplot(., aes( x = "PSP", y = Braak_NFT)) + geom_boxplot() + geom_jitter()
+prcomp(log2(m[myids, ]), scale = T) $x %>%
+ as.data.frame(.) %>% mutate(id = rownames(.)) %>%
+dplyr::left_join(., meta_, by = "id") -> pcadf
+ggplot(pcadf, aes(PC1, PC2))  +
+geom_point(aes(col = Batch)) +
+theme_cowplot()
+lm("PC1 ~ Batch", data = pcadf) %>% summary
+lm("PC2 ~ Batch ", data = pcadf) %>% summary
+
+#Although PC2 is associated with nearly all batches, it only explains 5% of variance and since it is not associates with any other variable, I will add PC2 instead of the batches
+
+meta_ <- meta_ %>% dplyr::left_join(., pcadf %>% select(id, PC2), by = "id") %>% 
+	dplyr::rename(PC2_BraakNFT_BatchPSP = PC2)
+rownames(meta_)  <-  meta_$id
+
+M4 <- model.matrix(~ Sex + Age + Braak_NFT, data = meta_[myids,]) 
+psp_tau <- dpe_enrich_plot(m[myids,], M4, myVar = "Braak_NFT", pthres = 0.05, addLabel = T)
+psp_tau[[4]] %>% filter(padj < 0.05) %>% print(n = 100)
+
+psp_tau[[2]]
+psp_tau[[3]]
+```
+
+No DPE
+
+# Biomarker identification
+
+## XGBoost and iterative feature selection
+This can be skipped as model is given as rds
+
+```{r}
+library(xgboost)
+library(caret)
+library(MLmetrics)
+library(Metrics)
+set.seed(123)
+#define data
+myids <- meta_ %>% filter(Diagnosis %in% c("PD", "Control")) %>% pull(id)
+pd[[1]] %>% filter(adj.P.Val < 0.05) %>% pull(Accession) -> dpes
+x <- m[myids,dpes] %>% as.data.frame
+x$id <- rownames(x)
+train_x <- x %>% dplyr::sample_frac(.7)
+test_x  <- x %>% anti_join(., train_x, by = "id")
+rownames(meta_) <- meta_$id
+train_y <- meta_[train_x$id, "Diagnosis"]
+#%>%
+	#mutate(Diagnosis = ifelse(Diagnosis == "PD", 1, 0))
+test_y <- meta_[test_x$id, "Diagnosis"] 
+#%>%
+	#mutate(Diagnosis = ifelse(Diagnosis == "PD", 1, 0))
+
+
+# grid search setup 
+xgb_grid_1 = expand.grid(
+#train rounds
+nrounds = 100,
+#Step size shrinkage used in update to prevents overfitting. After each boosting step, we can directly get the weights of new features, and eta shrinks the feature weights to make the boosting process more conservative.
+eta = c(0.01, 0.001, 0.0001, 0.00001),
+#tree depth
+max_depth = c(6, 8, 10, 16),
+#reg parameter
+#"the higher the simpler"
+gamma = c(0.1, 0.4),
+# minimum sum of instance weight 
+min_child_weight = 1,
+# subsampling ratio of columns for each tree
+colsample_bytree = c(1, 0.4, 0.8),
+subsample = c(0.4, 0.6))
+# pack the training control parameters
+
+f1 <- function(data, lev = NULL, model = NULL) {
+  f1_val <- F1_Score(y_pred = data$pred, y_true = data$obs, positive = lev[2])
+  c(F1 = f1_val)
+}
+
+xgb_trcontrol_1 = trainControl(
+method = "cv",
+number = 5,
+verboseIter = TRUE,
+returnData = FALSE,
+returnResamp = "all",                                                        # save losses across all models
+classProbs = TRUE,                                                           # set to TRUE for AUC to be computed
+#summaryFunction = twoClassSummary,
+summaryFunction = f1,
+allowParallel = TRUE
+)
+
+# train
+
+xgb_train_1 = train(
+x = as.matrix(train_x %>%
+select(-id)) %>% log1p,
+y = as.factor(train_y),
+trControl = xgb_trcontrol_1,
+tuneGrid = xgb_grid_1,
+method = "xgbTree",
+metric = "F1"
+)
+plot(xgb_train_1)
+#Average over 5 folds
+tab  <- caret::confusionMatrix(xgb_train_1)
+tab
+caret::recall(tab$table, relevant = "PD") 
+caret::precision(tab$table, relevant = "PD") 
+caret::F_meas(tab$table, relevant = "PD", beta = 1)
+
+
+# cALCULATE BASE MODEL
+# 1. sample 50%
+base_f <- sapply(xgb_train_1$control$indexOut, function(cv){
+	true = train_y[cv] %>% as.factor
+	true
+	levels(true)
+	#predicted vector is random sampling from the two classes given a probability (can be adjusted to match the ratio of the classes)
+	pred = factor(sample(x = c("PD", "Control"),
+			size = length(true),
+			replace = T,
+			prob = c(.5,.5)),
+			levels = c("Control", "PD")
+	)	
+	pred
+	tab <- caret::confusionMatrix(pred, true)
+	tab
+	caret::precision(tab$table)
+	caret::recall(tab$table)
+	caret::F_meas(tab$table, relevant = "PD", beta = 1)
+})
+mean(base_f)
+saveRDS(xgb_train_1, "./xgb_train_1.rds")
+# predict on test
+pred <- predict(xgb_train_1, newdata = test_x %>% select(-id) %>% as.matrix %>% log1p)
+pred
+#test_y$Diagnosis %>% as.factor -> test_y
+tab <- caret::confusionMatrix(pred, test_y %>% as.factor)
+tab
+caret::precision(tab$table, relevant = "PD")
+caret::recall(tab$table, releavnt = "PD")
+caret::F_meas(tab$table, relevant = "PD", beta = 1)
+
+# Plot var imp and check how many neuronal markers
+mgp %>% filter(cell_type == "Neurons") %>% pull(gene_name) -> neurons
+mgp %>% filter(cell_type == "Endothelials") %>% pull(gene_name) -> endothelials
+
+varImp(xgb_train_1)$importance %>% 
+	as.data.frame %>%
+	mutate(Accession = rownames(.)) %>%
+	left_join(pd[[1]] %>% select(Accession, gene_name, Type, logFC),
+		  by = "Accession") %>%
+	mutate(isNeuronalOrEndo = ifelse(gene_name %in% neurons | gene_name %in% endothelials, "yes", "no")) %>% 
+	filter(Overall > 25) -> impVars
+ggplot(impVars, aes(x  = Overall, y = gene_name)) +
+	scale_color_manual(values = c("-1" = "red", "1" = "blue")) +
+	scale_fill_viridis_d() +
+	geom_bar(stat = "identity", aes(fill = Type)) +
+	geom_point(aes(size = 2*abs(logFC), shape = isNeuronalOrEndo,
+		       col = as.factor(sign(logFC)))) +
+	theme_cowplot() -> p1
+prcomp(log1p(m[myids, impVars$Accession]), scale = T)$x %>%
+	as.data.frame %>%
+	mutate(id = rownames(.)) %>%
+	left_join(., meta_, by = "id") -> pcdf
+ggplot(pcdf, aes(x = PC1, y = PC2, col = Diagnosis)) +
+geom_point() +
+scale_color_manual(values = cols_pd) +
+scale_fill_manual(values = cols_pd) +
+theme_cowplot() +
+stat_ellipse(geom = "polygon", aes(fill = Diagnosis), alpha = .5) -> p2
+
+ggplot(pcdf, aes(x = PC1, y = PC2, col = as.numeric(Braak_LB))) +
+geom_point(size = 2, aes(shape = Diagnosis)) +
+scale_color_viridis() +
+#scale_fill_manual(values = cols_pd) +
+theme_cowplot() -> p3 
+#stat_ellipse(geom = "polygon", aes(fill = Diagnosis), alpha = .5) 
+
+p1
+p1 / (p2 + p3)
+```
+
+Alternative variable importance measure
+
+```{r}
+library(treeshap)
+
+#now for figure finalizing Im just working on the saved model
+readRDS("./data/models/treeshap1.rds") -> treeshap1
+readRDS("./data/models/xgb_train_1.rds") -> xgb_train_1
+
+# Otherwise uncomment the next three lines
+##treeshap::xgboost.unify(xgb_train_1$finalModel, train_x %>% select(-id)) -> unified
+##treeshap1 <- treeshap(unified, train_x %>% select(-id), interactions = T, verbose = 0)
+##saveRDS(treeshap1, "./treeshap1.rds")
+
+
+treeshap1$shaps %>% apply(., 2, mean) %>%
+	data.frame(Accession = names(.), mean_shap = .) %>% 
+left_join(pd[[1]] %>% select(Accession, gene_name, Type, logFC),
+		  by = "Accession") %>%  
+#	mutate(isNeuronalOrEndo = ifelse(gene_name %in% neurons | gene_name %in% endothelials, "yes", "no")) %>%
+       filter(!is.na(gene_name)) %>% # abs(mean_shap) >= 0.000015) %>% 
+	arrange(desc(abs(mean_shap))) %>% 
+	mutate(gene_name = factor(gene_name, levels = unique(gene_name))) -> impVars
+impVars %>%
+	mutate(Enzyme = case_when(
+		gene_name == "ABR" ~ "Oxidoreductase",
+		gene_name == "PAFAH1B3" ~ "Hydrolase",
+		#gene_name == "PSMB6" ~ NA,
+		gene_name ==  "RPS6KA5" ~ "Transferase",
+	#	gene_name == "NCALD" ~ NA,
+	#	gene_name == "PLXNC1" ~ NA,
+		gene_name == "RHOA"~ "Hydrolase",
+		gene_name == "ASNS" ~ "Ligase",
+		gene_name == "PGD" ~ "Hydrolase",
+		gene_name == "MARK1" ~ "Transferase",
+	#	gene_name ==  "NDRG2" ~ NA,
+		gene_name == "AKR1B1" ~ "Oxidoreductase",
+		gene_name == "AMPD2" ~ "Hydrolase",
+	#	gene_name == "HPCAL4" ~ NA,
+	#	gene_name == "GSPT1" ~ NA,
+		gene_name == "USP11" ~ "Hydrolase",
+	#	gene_name == "SH3BGRL" ~ NA,
+		gene_name == "GPI" ~ "Transferase",
+	#	gene_name == "SAFB2" ~ NA,
+		gene_name == "NT5C1A" ~ "Hydrolase",
+		gene_name == "GPT2" ~ "Transferase",
+	#	gene_name == "DOCK3" ~ NA,
+		gene_name == "LCLAT1" ~ "Transferase",
+		gene_name == "SAE1" ~ "Ligase",
+		gene_name == "MAPK3" ~ "Transferase",
+		#gene_name == "WBP2" ~ NA,
+		#gene_name == "CHGA" ~ NA,
+		#gene_name == "CKAP4" ~ NA,
+		gene_name == "ACADSB" ~ "Oxidoreductase",
+		gene_name == "MAP2K6" ~ "Transferase",
+		gene_name == "OGA" ~ "Hydrolase",
+		gene_name == "GGPS1" ~ "Transferase",
+		gene_name == "ADCY2" ~ "Lyase",
+		gene_name == "OSTC" ~ "Transferase",
+		gene_name == "LYPLA2" ~ "Hydrolase",
+		gene_name == "PTRHD1" ~ "Hydrolase",
+		gene_name == "YME1L1" ~ "Hydrolase",
+		gene_name == "AIFM3" ~ "Oxidoreductase",
+		gene_name == "RAB3B" ~ "Hydrolase",
+		gene_name == "PSMA3" | gene_name == "PSMA6" ~ "Hydrolase",
+		        TRUE ~ NA)) -> impVars
+ggplot(impVars %>% head(25) %>%
+       arrange((abs(mean_shap))) %>%
+       mutate(gene_name = factor(gene_name, levels = gene_name)),
+aes(x  = abs(mean_shap), y = gene_name)) +
+	scale_color_manual(values = c("-1" = "red", "1" = "blue")) +
+#	scale_fill_viridis_d(na.value = "grey70") +
+	geom_bar(stat = "identity", aes(fill = Type)) +
+	geom_point(aes(size = 2*abs(logFC), col = as.factor(sign(logFC)))) +
+	labs(y = "Absolute importance value", y = "Gene name", col  = "Sign of logFC") +
+	theme_cowplot() -> p4
+p4
+impVars %>%
+	filter(!Accession %in% c("O00213", "Q12797-7")) %>%
+	filter(abs(mean_shap) > 0) %>%
+	     pull(Accession) -> thesevars
+#removing zero var ones
+myids <- meta_ %>% filter(Diagnosis %in% c("Control", "PD")) %>% 
+	pull(id)
+prcomp(m[myids, thesevars], scale = T)$x %>%
+	as.data.frame %>%
+	mutate(id = rownames(.)) %>%
+	left_join(., meta_, by = "id") -> pcdf
+ggplot(pcdf, aes(x = PC1, y = PC2, col = Diagnosis)) +
+geom_point() +
+scale_color_manual(values = cols_pd) +
+scale_fill_manual(values = cols_pd) +
+theme_cowplot() +
+stat_ellipse(geom = "polygon", aes(fill = Diagnosis), level = 0.75, alpha = .2) -> p5
+
+ggplot(pcdf %>%
+       mutate(Braak_factor =
+	      case_when(as.numeric(Braak_LB) == 6 ~ "Braak = 6",
+			as.numeric(Braak_LB) == 5 ~ "Braak = 5",
+			as.numeric(Braak_LB) == 4 ~ "Braak = 4",
+			as.numeric(Braak_LB) > 0 ~ "0 < Braak <= 3",
+			as.numeric(Braak_LB) == 0 ~ " Braak = 0",
+				TRUE ~ NA)),
+       aes(x = PC1, y = PC2, col = Braak_factor)) +
+geom_point(size = 2, aes(shape = Diagnosis)) +
+scale_color_viridis(discrete = T) +
+stat_ellipse(aes(group = Diagnosis), level = 0.75) +
+#scale_fill_manual(values = cols_pd) +
+theme_cowplot() -> p7 
+
+
+#Test association with CERAD
+lm(PC1 ~ CERAD, pcdf %>% mutate(CERAD = ifelse(grepl("ormal", CERAD), "0", CERAD)) %>% mutate(CERAD = ifelse(CERAD == "not AD", NA, CERAD)) %>% mutate(CERAD = case_when(
+		    CERAD == "0" ~ 0,
+		    CERAD == "A" ~ 1,
+		    CERAD == "B" ~ 2,
+		    CERAD == "C" ~ 3)) %>%
+   mutate(CERAD = as.numeric(CERAD))) %>% summary
+# Test association with LB
+lm(PC1 ~ Braak_LB, pcdf) %>% summary
+lm(PC1 ~ endothelial, pcdf) %>% summary
+pdf("./Figures/Figure4.pdf", width = 14, height = 10)
+(p4 | (  p5 / p7)) + plot_layout(widths = c(2,1))
+dev.off()
+runEnrich(dataDF_raw, myGenes = as.character(impVars %>% head(25) %>% pull(gene_name)))
+```
+
+ORA on all nonzero:
+
+```{r}
+pd[[1]] %>% filter(Accession %in% thesevars) %>%
+	pull(gene_name) -> myGenes
+runEnrich(pd[[1]], myGenes = myGenes)
+```
+
+# Manuscript stuff
+
+Common proteins 
+
+```{r}
+pd[[1]] %>% 
+	filter(Accession %in% sigInALL_nom) %>%
+	select(Accession, gene_name, logFC, P.Value, adj.P.Val) %>%
+	dplyr::rename(logFC_PD = logFC,
+		      P.Value_PD = P.Value,
+		      adj.P.Val_PD = adj.P.Val) %>%
+	dplyr::left_join(., 
+			 psp[[1]] %>%
+				select(Accession, logFC, P.Value, adj.P.Val) %>%
+				dplyr::rename(logFC_PSP = logFC,
+		  		P.Value_PSP = P.Value,
+		      		adj.P.Val_PSP = adj.P.Val),
+			 by = "Accession") %>%
+	dplyr::left_join(., 
+			 msa[[1]] %>%
+				select(Accession, logFC, P.Value, adj.P.Val) %>%
+				dplyr::rename(logFC_MSA = logFC,
+		  		P.Value_MSA = P.Value,
+		      		adj.P.Val_MSA = adj.P.Val),
+			 by = "Accession") %>%
+write.table(., "./Tables/S2_sheet_common.csv", quote = F, row.names =F)
+```
+
+
+### Prohibitin
+
+```{r}
+myGene <- "P35232"
+PHB1 <- m[,myGene] %>% data.frame(id = names(.), PHB1 = .)
+mydf <- meta_[rownames(m),] %>%
+	dplyr::left_join(., PHB1)
+mydf %>%
+	ggplot(., aes(x = Age, y = PHB1, col = neurons)) +
+	geom_point() +
+	facet_wrap(~Diagnosis) +
+	stat_cor() +
+	scale_color_viridis() +
+	theme_bw()
+lm(PHB1 ~ Age + Sex +  neurons, mydf %>% filter(Diagnosis == "Control")) %>%
+	summary
+lm(PHB1 ~ Age + Sex + neurons + Diagnosis, mydf) %>%
+	summary
+
+```
+
+
+```{r}
+myGene <- "Q99623"
+PHB1 <- m[,myGene] %>% data.frame(id = names(.), PHB1 = .)
+mydf <- meta_[rownames(m),] %>%
+	dplyr::left_join(., PHB1)
+mydf %>%
+	ggplot(., aes(x = Age, y = PHB1, col = neurons)) +
+	geom_point() +
+	facet_wrap(~Diagnosis) +
+	stat_cor() +
+	scale_color_viridis() +
+	theme_bw()
+lm(PHB1 ~ Age + Sex +  neurons, mydf %>% filter(Diagnosis == "Control")) %>%
+	summary
+lm(PHB1 ~ Age + Sex + Braak_LB, mydf) %>%
+	summary
+
+```
+
+
+### Oxphos heatmap in cytoscape
+
+```{r}
+ pd[[1]] %>% filter(Type == "OXPHOS") %>% arrange(desc(abs(logFC))) %>% mutate(nomSig = ifelse(P.Value < 0.05, "yes", "no")) %>%
+	 select(gene_name, logFC,nomSig)  %>%
+	 dplyr::left_join(., oxphos, by = "gene_name") %>%
+	 write.table(., "./pd_ct_oxphos.txt", quote = F, row.names = F, col.names = F, sep = ",")
+
+ braak[[1]] %>%
+	 filter(Type == "OXPHOS") %>%
+	 arrange(desc(abs(logFC))) %>%
+	 mutate(nomSig = ifelse(P.Value < 0.05, "yes", "no")) %>%
+	 select(gene_name, logFC,nomSig)  %>% 
+	 dplyr::left_join(., oxphos, by = "gene_name") %>%
+	 write.table(., "./braak_oxphos.txt", quote = F, row.names = F, col.names = F, sep = ",")
+
+
+ mito[[1]] %>%
+	 filter(Type == "OXPHOS") %>%
+	 arrange(desc(abs(logFC))) %>%
+	 mutate(nomSig = ifelse(P.Value < 0.05, "yes", "no")) %>%
+	 select(gene_name, logFC,nomSig)  %>% 
+	 dplyr::left_join(., oxphos, by = "gene_name") %>%
+	 write.table(., "./mitoPD_oxphos.txt", quote = F, row.names = F, col.names = F, sep = ",")
+```
+
+
+### S2
+
+```{r}
+xlsx::write.xlsx(pd[[1]] %>%
+		 filter(adj.P.Val < 0.05) %>%
+		 mutate(P.Value = formatC(P.Value, format = "e", digits = 2) %>% as.character %>% gsub("e", "x10^", .)) %>% 
+		 mutate(adj.P.Val = formatC(adj.P.Val, format = "e", digits = 2) %>% as.character %>% gsub("e", "x10^", .)) %>% 
+		 mutate(logFC = round(logFC, 3)) %>%
+		 select(gene_name, Accession, gene_id, logFC, P.Value, adj.P.Val) %>%
+		 arrange(desc(abs(logFC))) %>%
+		 head(20), "./top20.xlsx", sheetName = "PD_CT_proteins", append = F, col.names = TRUE, row.names = F)
+xlsx::write.xlsx(psp[[1]] %>%
+		 filter(adj.P.Val < 0.05) %>%
+		 mutate(P.Value = formatC(P.Value, format = "e", digits = 2) %>% as.character %>% gsub("e", "x10^", .)) %>% 
+		 mutate(adj.P.Val = formatC(adj.P.Val, format = "e", digits = 2) %>% as.character %>% gsub("e", "x10^", .)) %>% 
+		 mutate(logFC = round(logFC, 3)) %>%
+		 select(gene_name, Accession, gene_id, logFC, P.Value, adj.P.Val) %>%
+		 arrange(desc(abs(logFC))) %>%
+		 head(20), "./top20.xlsx", sheetName = "PSP_CT_proteins", append = F, col.names = TRUE, row.names = F)
+
+xlsx::write.xlsx(msa[[1]] %>%
+		 filter(adj.P.Val < 0.05) %>%
+		 mutate(P.Value = formatC(P.Value, format = "e", digits = 2) %>% as.character %>% gsub("e", "x10^", .)) %>% 
+		 mutate(adj.P.Val = formatC(adj.P.Val, format = "e", digits = 2) %>% as.character %>% gsub("e", "x10^", .)) %>% 
+		 mutate(logFC = round(logFC, 3)) %>%
+		 select(gene_name, Accession, gene_id, logFC, P.Value, adj.P.Val) %>%
+		 arrange(desc(abs(logFC))) %>%
+		 head(20), "./top20.xlsx", sheetName = "MSA_CT_proteins", append = F, col.names = TRUE, row.names = F)
+
+
+
+
+xlsx::write.xlsx(psp[[1]] %>% 
+		 select(gene_name, Accession, gene_id, logFC, P.Value, adj.P.Val) %>%
+		 arrange(adj.P.Val), "./Tables/S2.xlsx", sheetName = "PSP_CT_proteins", append = T, col.names = TRUE, row.names = F)
+xlsx::write.xlsx(msa[[1]] %>%
+		  select(gene_name, Accession, gene_id, logFC, P.Value, adj.P.Val) %>%
+		 arrange(adj.P.Val), "./Tables/S2.xlsx", sheetName = "MSA_CT_proteins", append = T, col.names = TRUE, row.names = F)
+xlsx::write.xlsx(braak[[1]] %>%
+		  select(gene_name, Accession, gene_id, logFC, P.Value, adj.P.Val) %>%
+		 arrange(adj.P.Val), "./Tables/S2.xlsx", sheetName = "BraakLB_proteins", append = T, col.names = TRUE, row.names = F)
+
+
+o  <- (pd[[4]] %>%
+		 filter(padj < 0.05) %>%
+		 select(pathway, pval, padj, ES, NES, size, Set) %>%
+		 arrange(desc(abs(NES)))) %>%
+		 as.data.frame
+xlsx::write.xlsx(o, "./Tables/S2.xlsx", sheetName = "PD_CT_pathways", append = T, col.names = TRUE, row.names = F)
+
+o  <- (psp[[4]] %>%
+		 filter(padj < 0.05) %>%
+		 select(pathway, pval, padj, ES, NES, size, Set) %>%
+		 arrange(desc(abs(NES)))) %>%
+		 as.data.frame
+xlsx::write.xlsx(o, "./Tables/S2.xlsx", sheetName = "PSP_CT_pathways", append = T, col.names = TRUE, row.names = F)
+
+
+o  <- (msa[[4]] %>%
+		 filter(padj < 0.05) %>%
+		 select(pathway, pval, padj, ES, NES, size, Set) %>%
+		 arrange(desc(abs(NES)))) %>%
+		 as.data.frame
+xlsx::write.xlsx(o, "./Tables/S2.xlsx", sheetName = "MSA_CT_pathways", append = T, col.names = TRUE, row.names = F)
+
+
+o  <- (braak[[4]] %>%
+		 filter(padj < 0.05) %>%
+		 select(pathway, pval, padj, ES, NES, size, Set) %>%
+		 arrange(desc(abs(NES)))) %>%
+		 as.data.frame
+xlsx::write.xlsx(o, "./Tables/S2.xlsx", sheetName = "BraakLB_pathways", append = T, col.names = TRUE, row.names = F)
+```
+
+### S1
+
+```{r}
+meta_ %>% select(Prot2_ID, Pool, Channel, Cohort, Age, Sex, Diagnosis, Braak_LB, Braak_NFT) %>%
+	xlsx::write.xlsx(., "./Tables/S1.xlsx", append = F, col.names = TRUE, row.names = F)
+```
+
+### KRTs
+
+```{r}
+#plot expression of NDUFS4 by Braak LB
+my_gene = "KRT9"
+myGene <- pd[[1]] %>% filter(gene_name == my_gene) %>% pull(Accession)
+ log1p(m)[,myGene] %>% 
+	data.frame(id = names(.), value = .) %>% 
+#	reshape2::melt(., id.vars = c("id")) %>% 
+	left_join(., meta_, by = "id")  %>%
+	mutate(id_label = ifelse(Diagnosis %in% c("Control", "PD"), id, NA)) -> df
+
+ggplot((df %>% filter(Diagnosis %in% c("Control", "PD"))),aes(x = Diagnosis, y  = value)) +
+	geom_boxplot() + 
+	ggbeeswarm::geom_beeswarm(aes(col = Column)) +
+	#geom_boxplot(width = .3, fill = "transparent") +
+	theme_cowplot() #+
+#	facet_wrap(~Diagnosis) +
+	ggpubr::stat_compare_means() +
+#	facet_wrap(~Diagnosis) +
+#	scale_color_viridis(discrete = T)  
+
+ggplot((df %>% filter(Diagnosis %in% c("Control", "PD"))),aes(x = Age, y  = value)) +
+	geom_point(size = 1, aes(col = neurons)) +
+	#geom_boxplot(width = .3, fill = "transparent") +
+	theme_cowplot() +
+	facet_wrap(~Diagnosis) +
+	ggpubr::stat_cor() +
+	geom_smooth(method = "lm", se = F) +
+	facet_wrap(~Diagnosis) +
+	scale_color_viridis()  
+```
+

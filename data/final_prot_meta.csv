@@ -1,0 +1,200 @@
+old_label old_Pool Prot2_ID Diagnosis included_PD included_MSA included_PSP Sample weight in mg Age Sex Cohort Pool sample_id Label CERAD Braak_NFT Braak_LB Thal_phase
+126 1 prot2_158 Control YES YES NO 8.3 60 F KCL- London Neurodegenerative Diseases Brain Bank 1 158 127N NA 1 NA NA
+127N 1 prot2_001 PD YES NO NO 9.3 88 M Park West 1 1 127C C 4 6 NA
+127C 1 prot2_034 PD YES NO NO 10.4 71 M Barcelona Brain Bank 1 34 128N B 1 4 2
+128N 1 prot2_064 MSA NO YES NO 11.4 74 M Barcelona Brain Bank 1 64 128C C 5 0 5
+128C 1 prot2_045 MSA NO YES NO 11.5 79 F Barcelona Brain Bank 1 45 129N NA 2 NA NA
+129N 1 prot2_030 PSP NO NO YES 11.6 64 F Barcelona Brain Bank 1 30 129C NA NA NA NA
+129C 1 prot2_137 Control YES NO NO 11.7 82 M MS-PD Brain Bank 1 137 130N A 2 0 3
+130N 1 prot2_075 PD YES NO NO 12 81 F MS-PD Brain Bank 1 75 130C A 1 6 NA
+130C 1 prot2_093 PD YES NO NO 12.6 81 M MS-PD Brain Bank 1 93 131N NA 2 6 NA
+131N 1 prot2_008 PD YES NO NO 12.8 81 M Netherlands Brain Bank 1 8 131C A 2 6 NA
+131C 1 prot2_193 Control YES NO YES 13.6 69 M Oxford Brain Bank 1 193 132N normal with respect to AD related pathology 1 0 NA
+132N 1 prot2_033 PD YES NO NO 13.7 75 F Barcelona Brain Bank 1 33 132C B 4 6 1
+132C 1 prot2_013 Control YES NO NO 13.8 88 F Neuromics Tissue Bank 1 13 133N NA NA NA NA
+133N 1 prot2_011 Control YES NO YES 16 67 F KCL- London Neurodegenerative Diseases Brain Bank 1 11 133C NA 2 NA NA
+133C 1 prot2_181 Control YES NO NO 16.3 88 M Oxford Brain Bank 1 181 134N NA 1 NA NA
+134N 1 prot2_063 PSP NO NO YES 16.5 69 M Barcelona Brain Bank 1 63 134C NA NA NA NA
+134C 1 prot2_156 Control YES NO NO 18 94 F KCL- London Neurodegenerative Diseases Brain Bank 1 156 135N NA 6 NA NA
+126 2 prot2_049 MSA NO YES NO 8.1 69 F Barcelona Brain Bank 2 49 127N 0 2 NA 0
+127N 2 prot2_072 PD YES NO NO 8.5 77 M Park West 2 72 127C NA NA 6 NA
+127C 2 prot2_079 PD YES NO NO 10.1 77 M MS-PD Brain Bank 2 79 128N NA 2 6 NA
+128N 2 prot2_105 PD YES NO NO 10.3 81 F MS-PD Brain Bank 2 105 128C A 2 6 3
+128C 2 prot2_086 PD YES NO NO 10.6 69 M MS-PD Brain Bank 2 86 129N NA 2 6 NA
+129N 2 prot2_169 PD YES NO NO 11 80 M KCL- London Neurodegenerative Diseases Brain Bank 2 169 129C NA NA Parkinsons/Lewy body findings, NA
+129C 2 prot2_192 Control YES NO YES 11 63 M Oxford Brain Bank 2 192 130N NA NA NA NA
+130N 2 prot2_117 PD YES NO NO 11.3 81 F MS-PD Brain Bank 2 117 130C A 3 6 3
+130C 2 prot2_146 Control YES YES NO 11.6 87 F KCL- London Neurodegenerative Diseases Brain Bank 2 146 131N A 2 0 1
+131N 2 prot2_152 Control YES NO NO 12.2 82 M KCL- London Neurodegenerative Diseases Brain Bank 2 152 131C 0 2 0 0
+131C 2 prot2_167 Control YES NO NO 12.2 95 F KCL- London Neurodegenerative Diseases Brain Bank 2 167 132N C 4 NA 5
+132N 2 prot2_068 Control YES NO YES 13.1 83 F Barcelona Brain Bank 2 68 132C B 2 0 5
+132C 2 prot2_029 PSP NO NO YES 13.3 83 M Barcelona Brain Bank 2 29 133N B 1 0 3
+133N 2 prot2_061 MSA NO YES NO 13.3 67 M Barcelona Brain Bank 2 61 133C A 1 NA 4
+133C 2 prot2_150 PSP NO NO YES 16.7 88 F KCL- London Neurodegenerative Diseases Brain Bank 2 150 134N NA NA NA NA
+134N 2 prot2_123 Control YES NO NO 19.2 68 M MS-PD Brain Bank 2 123 134C NA NA 0 NA
+134C 2 prot2_190 Control YES NO NO 23 92 F Oxford Brain Bank 2 190 135N NA 2 0 NA
+126 3 prot2_101 PD YES NO NO 7.8 84 M MS-PD Brain Bank 3 101 127N 0 2 6 NA
+127N 3 prot2_066 Control YES NO YES 8 76 M Barcelona Brain Bank 3 66 127C 0 0 0 0
+127C 3 prot2_118 PD YES NO NO 8 68 M MS-PD Brain Bank 3 118 128N 0 3 6 3
+128N 3 prot2_107 PD YES NO NO 9 73 M MS-PD Brain Bank 3 107 128C 0 1 6 2
+128C 3 prot2_047 MSA NO YES NO 9.1 68 F Barcelona Brain Bank 3 47 129N 0 0 NA 0
+129N 3 prot2_139 PSP NO NO YES 9.3 73 M KCL- London Neurodegenerative Diseases Brain Bank 3 139 129C NA NA NA NA
+129C 3 prot2_004 PD YES NO NO 9.8 72 F Park West 3 4 130N 0 3 6 NA
+130N 3 prot2_032 PSP NO NO YES 10.4 75 F Barcelona Brain Bank 3 32 130C 0 2 0 1
+130C 3 prot2_044 PD YES NO NO 10.6 92 M Barcelona Brain Bank 3 44 131N A 3 5 2
+131N 3 prot2_016 PD YES NO NO 13.9 76 F MS-PD Brain Bank 3 16 131C NA >3 6 NA
+131C 3 prot2_018 Control YES NO YES 14.3 76 F Netherlands Brain Bank 3 18 132N 0 2 0 NA
+131C 3 prot2_018 Control YES NO YES 14.3 76 F Netherlands Brain Bank 3 18 132N NA NA NA NA
+132N 3 prot2_074 Control YES NO NO 15.3 95 F Neuromics Tissue Bank 3 74 132C NA NA 0 NA
+132C 3 prot2_151 Control YES NO NO 15.5 86 M KCL- London Neurodegenerative Diseases Brain Bank 3 151 133N NA 3 NA NA
+133N 3 prot2_174 Control YES YES NO 19.8 60 F Oxford Brain Bank 3 174 133C normal with respect to AD related pathology 1 0 NA
+133C 3 prot2_166 Control YES NO NO 20.2 81 F KCL- London Neurodegenerative Diseases Brain Bank 3 166 134N A 3 0 2
+134N 3 prot2_069 PD YES NO NO 22.4 82 F MS-PD Brain Bank 3 69 134C NA <2 6 NA
+134C 3 prot2_180 Control YES NO NO 24.5 85 M Oxford Brain Bank 3 180 135N Normal 1 NA NA
+126 4 prot2_116 PD YES NO NO 8.6 69 F MS-PD Brain Bank 4 116 127N 0 2 6 3
+127N 4 prot2_132 Control YES NO NO 9.2 83 M MS-PD Brain Bank 4 132 127C 0 2 0 3
+127C 4 prot2_038 PD YES NO NO 9.5 81 M Barcelona Brain Bank 4 38 128N NA NA NA NA
+128N 4 prot2_144 Control YES NO YES 10 75 M KCL- London Neurodegenerative Diseases Brain Bank 4 144 128C NA NA NA NA
+128C 4 prot2_052 MSA NO YES NO 10.7 58 F Barcelona Brain Bank 4 52 129N NA NA NA NA
+129N 4 prot2_088 PD YES NO NO 10.7 73 F MS-PD Brain Bank 4 88 129C NA 2 6 NA
+129C 4 prot2_017 Control YES NO NO 11.4 85 F Netherlands Brain Bank 4 17 130N B 1 0 NA
+130N 4 prot2_003 PD YES NO NO 12.4 82 M Park West 4 3 130C 0 4 6 NA
+130C 4 prot2_097 PD YES NO NO 12.9 57 M MS-PD Brain Bank 4 97 131N NA 0 5 NA
+131N 4 prot2_138 PSP NO NO YES 13 69 M KCL- London Neurodegenerative Diseases Brain Bank 4 138 131C NA NA NA NA
+131C 4 prot2_154 Control YES NO NO 13.7 79 M KCL- London Neurodegenerative Diseases Brain Bank 4 154 132N A 2 0 2
+132N 4 prot2_164 Control YES YES NO 15.7 68 F KCL- London Neurodegenerative Diseases Brain Bank 4 164 132C 0 0 NA 3
+132C 4 prot2_019 PSP NO NO YES 16.5 71 F Barcelona Brain Bank 4 19 133N NA NA NA NA
+133N 4 prot2_173 Control YES NO NO 17 78 F KCL- London Neurodegenerative Diseases Brain Bank 4 173 133C 0 2 0 0
+133C 4 prot2_141 Control YES NO YES 17.3 92 F KCL- London Neurodegenerative Diseases Brain Bank 4 141 134N NA 3 NA NA
+134N 4 prot2_104 PD YES NO NO 17.6 85 F MS-PD Brain Bank 4 104 134C A 2 6 1
+134C 4 prot2_015 PD YES NO NO 18.5 80 M MS-PD Brain Bank 4 15 135N 0 <2 5 NA
+126 5 prot2_006 PD YES NO NO 8.5 83 F Park West 5 6 127N C 5 6 NA
+127N 5 prot2_092 PD YES NO NO 9 72 M MS-PD Brain Bank 5 92 127C C 2 6 NA
+127C 5 prot2_077 PD YES NO NO 10 75 M MS-PD Brain Bank 5 77 128N NA 2 6 NA
+128N 5 prot2_081 PD YES NO NO 10.3 82 F MS-PD Brain Bank 5 81 128C 0 2 6 NA
+128C 5 prot2_185 Control YES NO NO 11 85 M Oxford Brain Bank 5 185 129N Normal 1 0 NA
+129N 5 prot2_131 Control YES NO YES 11.7 93 F MS-PD Brain Bank 5 131 129C 0 2 0 2
+129C 5 prot2_136 Control YES NO YES 11.8 70 M MS-PD Brain Bank 5 136 130N 0 1 0 3
+130N 5 prot2_172 Control YES NO NO 12.2 87 F KCL- London Neurodegenerative Diseases Brain Bank 5 172 130C A 2 0 4
+130C 5 prot2_043 PD YES NO NO 13.1 81 M Barcelona Brain Bank 5 43 131N NA NA 5 NA
+131N 5 prot2_153 Control YES NO NO 13.9 95 M KCL- London Neurodegenerative Diseases Brain Bank 5 153 131C NA 4 NA NA
+131C 5 prot2_142 PSP NO NO YES 14.6 71 M KCL- London Neurodegenerative Diseases Brain Bank 5 142 132N NA NA NA NA
+132N 5 prot2_084 PD YES NO NO 15.1 86 M MS-PD Brain Bank 5 84 132C 0 1 5 NA
+132C 5 prot2_039 PD YES NO NO 15.2 79 F Barcelona Brain Bank 5 39 133N B 4 4 1
+133N 5 prot2_175 Control YES YES NO 16 42 F Oxford Brain Bank 5 175 133C NA NA NA NA
+133C 5 prot2_196 Control YES NO NO 17.8 68 F Oxford Brain Bank 5 196 134N normal with respect to AD related pathology 0 0 NA
+134N 5 prot2_025 PSP NO NO YES 19.1 83 F Barcelona Brain Bank 5 25 134C NA NA NA NA
+134C 5 prot2_051 MSA NO YES NO 20.1 52 F Barcelona Brain Bank 5 51 135N NA NA NA NA
+126 6 prot2_113 PD YES NO NO 9 72 M MS-PD Brain Bank 6 113 127N 0 2 4 1
+127N 6 prot2_122 PD YES NO NO 9.3 84 M MS-PD Brain Bank 6 122 127C A 2 5 4
+127C 6 prot2_126 Control YES NO NO 10.6 87 M MS-PD Brain Bank 6 126 128N NA NA NA NA
+128N 6 prot2_109 PD YES NO NO 11.6 85 F MS-PD Brain Bank 6 109 128C C 4 5 3
+128C 6 prot2_128 Control YES NO NO 13 87 F MS-PD Brain Bank 6 128 129N C3 NA NA 3
+129N 6 prot2_021 PSP NO NO YES 13.4 86 F Barcelona Brain Bank 6 21 129C 0 3 6 0
+129C 6 prot2_189 Control YES NO YES 14 71 M Oxford Brain Bank 6 189 130N Normal aged brain 1 0 NA
+130N 6 prot2_091 PD YES NO NO 14.3 81 F MS-PD Brain Bank 6 91 130C NA 2 6 NA
+130C 6 prot2_162 Control YES NO YES 15.2 86 F KCL- London Neurodegenerative Diseases Brain Bank 6 162 131N A 2 NA 2
+131N 6 prot2_103 PD YES NO NO 16 79 M MS-PD Brain Bank 6 103 131C 0 2 5 0
+131C 6 prot2_048 MSA NO YES NO 16.5 49 M Barcelona Brain Bank 6 48 132N NA NA NA NA
+132N 6 prot2_168 PD YES NO NO 18 81 F KCL- London Neurodegenerative Diseases Brain Bank 6 168 132C NA NA Parkinsons/Lewy body findings, NA
+132C 6 prot2_159 Control YES NO NO 18.8 87 M KCL- London Neurodegenerative Diseases Brain Bank 6 159 133N 0 1 0 2
+133N 6 prot2_073 Control YES YES NO 19.2 66 M MS-PD Brain Bank 6 73 133C A 0 0 NA
+133C 6 prot2_096 PD YES NO NO 21.2 79 M MS-PD Brain Bank 6 96 134N NA 0 5 NA
+134N 6 prot2_183 Control YES NO NO 22.1 92 F Oxford Brain Bank 6 183 134C NA 3 NA NA
+134C 6 prot2_140 PSP NO NO YES 23.7 55 M KCL- London Neurodegenerative Diseases Brain Bank 6 140 135N NA NA NA NA
+126 7 prot2_053 MSA NO YES NO 9.1 73 M Barcelona Brain Bank 7 53 127N NA NA NA NA
+127N 7 prot2_078 PD YES NO NO 10 82 F MS-PD Brain Bank 7 78 127C NA 2 5 NA
+127C 7 prot2_130 Control YES YES NO 10 91 M MS-PD Brain Bank 7 130 128N 0 2 0 2
+128N 7 prot2_184 Control YES NO NO 10 80 M Oxford Brain Bank 7 184 128C 0 1 0 NA
+128C 7 prot2_014 PD YES NO NO 10.2 80 M Barcelona Brain Bank 7 14 129N A 3 4 NA
+129N 7 prot2_002 PD YES NO NO 10.9 69 M Park West 7 2 129C 0 0 4 NA
+129C 7 prot2_037 PD YES NO NO 12 69 F Barcelona Brain Bank 7 37 130N NA NA 4 NA
+130N 7 prot2_155 Control YES NO YES 12.2 68 F KCL- London Neurodegenerative Diseases Brain Bank 7 155 130C NA 2 NA NA
+130C 7 prot2_127 Control YES NO NO 13.1 84 F MS-PD Brain Bank 7 127 131N NA NA NA NA
+131N 7 prot2_036 PD YES NO NO 14 83 M Barcelona Brain Bank 7 36 131C B 3 0 5
+131C 7 prot2_182 Control YES NO NO 15 86 F Oxford Brain Bank 7 182 132N NA 1 NA NA
+132N 7 prot2_005 PD YES NO NO 15.8 86 F Park West 7 5 132C C 2-3 6 NA
+132C 7 prot2_071 PD YES NO NO 15.9 70 M MS-PD Brain Bank 7 71 133N NA 0 6 NA
+133N 7 prot2_027 PSP NO NO YES 17 86 F Barcelona Brain Bank 7 27 133C 0 2 0 0
+133C 7 prot2_179 Control YES NO YES 22.2 71 M Oxford Brain Bank 7 179 134N NA 2 NA NA
+134N 7 prot2_157 Control YES NO NO 22.6 81 M KCL- London Neurodegenerative Diseases Brain Bank 7 157 134C 0 1 0 0
+126 8 prot2_089 PD YES NO NO 8 74 M MS-PD Brain Bank 8 89 127N NA 3 5 NA
+127N 8 prot2_076 PD YES NO NO 8.5 78 M MS-PD Brain Bank 8 76 127C A 2 6 NA
+127C 8 prot2_106 PD YES NO NO 8.5 81 F MS-PD Brain Bank 8 106 128N B 4 6 5
+128N 8 prot2_135 Control YES NO NO 8.6 87 M MS-PD Brain Bank 8 135 128C 0 1 0 3
+128C 8 prot2_176 Control YES NO YES 8.6 62 F Oxford Brain Bank 8 176 129N Normal 0 0 NA
+129N 8 prot2_119 PD YES NO NO 9.8 81 F MS-PD Brain Bank 8 119 129C 0 3 5 3
+129C 8 prot2_134 Control YES YES YES 10 87 F MS-PD Brain Bank 8 134 130N 0 2 0 3
+130N 8 prot2_082 PD YES NO NO 10.1 78 M MS-PD Brain Bank 8 82 130C NA >3 6 NA
+130C 8 prot2_090 PD YES NO NO 10.3 85 F MS-PD Brain Bank 8 90 131N NA 1 6 NA
+131N 8 prot2_147 Control YES NO NO 10.7 92 F KCL- London Neurodegenerative Diseases Brain Bank 8 147 131C NA 3 NA NA
+131C 8 prot2_124 Control YES YES NO 13.2 75 M MS-PD Brain Bank 8 124 132N NA 3 0 NA
+132N 8 prot2_026 PSP NO NO YES 13.4 84 F Barcelona Brain Bank 8 26 132C A 0 0 2
+132C 8 prot2_161 Control YES NO NO 13.5 97 M KCL- London Neurodegenerative Diseases Brain Bank 8 161 133N B 4 0 5
+133N 8 prot2_010 Control YES YES NO 14.8 56 F Barcelona Brain Bank 8 10 133C 0 2 0 1
+133C 8 prot2_050 MSA NO YES NO 16.9 59 M Barcelona Brain Bank 8 50 134N NA NA NA NA
+134N 8 prot2_100 PD YES NO NO 19.2 72 M MS-PD Brain Bank 8 100 134C A 1 6 2
+126 9 prot2_112 PD YES NO NO 9.2 81 M MS-PD Brain Bank 9 112 127N 0 2 4 1
+127N 9 prot2_055 MSA NO YES NO 9.4 71 M Barcelona Brain Bank 9 55 127C 0 2 NA 1
+127C 9 prot2_057 MSA NO YES NO 9.5 66 F Barcelona Brain Bank 9 57 128N NA NA NA NA
+128N 9 prot2_022 PSP NO NO YES 10.3 64 M Barcelona Brain Bank 9 22 128C A 1 2 1
+128C 9 prot2_085 PD YES NO NO 10.4 77 F MS-PD Brain Bank 9 85 129N NA 2 5 NA
+129N 9 prot2_102 PD YES NO NO 10.8 81 M MS-PD Brain Bank 9 102 129C B 3 6 NA
+129C 9 prot2_121 PD YES NO NO 10.8 81 M MS-PD Brain Bank 9 121 130N 0 3 6 3
+130N 9 prot2_065 Control YES NO NO 11.6 78 M Barcelona Brain Bank 9 65 130C 0 2 1 0
+130C 9 prot2_046 PD YES NO NO 14.1 70 F Barcelona Brain Bank 9 46 131N NA NA 4 NA
+131N 9 prot2_163 Control YES NO YES 14.4 78 F KCL- London Neurodegenerative Diseases Brain Bank 9 163 131C 0 2 0 0
+131C 9 prot2_070 PD YES NO NO 15.7 76 M MS-PD Brain Bank 9 70 132N NA 2 5 NA
+132N 9 prot2_111 Control YES YES NO 16.2 55 F KCL- London Neurodegenerative Diseases Brain Bank 9 111 132C NA 0 0 NA
+132C 9 prot2_195 Control YES NO NO 16.4 71 M Oxford Brain Bank 9 195 133N normal with respect to AD related pathology 1 0 NA
+133N 9 prot2_129 Control YES NO NO 17.8 83 F MS-PD Brain Bank 9 129 133C NA 2 0 NA
+133C 9 prot2_012 PD YES NO NO 21.2 81 F Barcelona Brain Bank 9 12 134N C 3 6 5
+134N 9 prot2_186 Control YES YES NO 24.3 71 M Oxford Brain Bank 9 186 134C Normal aged brain 1 0 NA
+126 10 prot2_099 PD YES NO NO 8.9 72 F MS-PD Brain Bank 10 99 127N NA 2 6 NA
+127N 10 prot2_035 PD YES NO NO 9.5 72 M Barcelona Brain Bank 10 35 127C B 2 6 4
+127C 10 prot2_098 PD YES NO NO 9.5 82 M MS-PD Brain Bank 10 98 128N NA 2 6 NA
+128N 10 prot2_054 MSA NO YES NO 10.6 62 M Barcelona Brain Bank 10 54 128C B 1 NA 3
+128C 10 prot2_060 MSA NO YES NO 10.6 66 F Barcelona Brain Bank 10 60 129N NA NA NA NA
+129N 10 prot2_067 Control YES YES NO 10.9 83 F Barcelona Brain Bank 10 67 129C 0 2 0 0
+129C 10 prot2_042 PD YES NO NO 11.1 50 M Barcelona Brain Bank 10 42 130N NA NA 5 NA
+130N 10 prot2_149 Control YES NO NO 11.3 74 F KCL- London Neurodegenerative Diseases Brain Bank 10 149 130C NA 2 NA NA
+130C 10 prot2_171 PD YES NO NO 11.6 84 F KCL- London Neurodegenerative Diseases Brain Bank 10 171 131N NA NA Parkinsons/Lewy body findings, NA
+131N 10 prot2_133 Control YES NO NO 12 85 M MS-PD Brain Bank 10 133 131C A 3 0 2
+131C 10 prot2_009 PD YES NO NO 12.8 84 M Netherlands Brain Bank 10 9 132N A 1 3 NA
+132N 10 prot2_191 Control YES NO YES 12.9 71 F Oxford Brain Bank 10 191 132C Normal 1 0 NA
+132C 10 prot2_020 PSP NO NO YES 15.3 82 M Barcelona Brain Bank 10 20 133N B 2 0 3
+133N 10 prot2_177 Control YES YES NO 16.9 51 M Oxford Brain Bank 10 177 133C NA 0 0 NA
+133C 10 prot2_114 PD YES NO NO 17.1 90 F MS-PD Brain Bank 10 114 134N 0 2 5 3
+134N 10 prot2_178 Control YES NO NO 17.2 100 M Oxford Brain Bank 10 178 134C NA 3 0 NA
+126 11 prot2_080 PD YES NO NO 9.8 80 M MS-PD Brain Bank 11 80 127N NA 2 6 NA
+127N 11 prot2_083 PD YES NO NO 10.2 78 F MS-PD Brain Bank 11 83 127C NA 2 6 NA
+127C 11 prot2_198 Control YES YES NO 10.8 56 M Oxford Brain Bank 11 198 128N NA 1 NA NA
+128N 11 prot2_087 PD YES NO NO 10.9 92 M MS-PD Brain Bank 11 87 128C NA 3 5 NA
+128C 11 prot2_041 PD YES NO NO 11 69 F Barcelona Brain Bank 11 41 129N NA NA 4 NA
+129N 11 prot2_007 PD YES NO NO 11.7 76 F Park West 11 7 129C NA NA 6 NA
+129C 11 prot2_059 MSA NO YES NO 12.5 74 F Barcelona Brain Bank 11 59 130N A 2 NA 3
+130N 11 prot2_187 Control YES NO YES 12.7 82 F Oxford Brain Bank 11 187 130C normal with respect to AD related pathology 1 0 NA
+130C 11 prot2_148 Control YES NO NO 13.3 90 F KCL- London Neurodegenerative Diseases Brain Bank 11 148 131N NA 2 NA NA
+131N 11 prot2_058 MSA NO YES NO 14.6 71 M Barcelona Brain Bank 11 58 131C NA 3 NA NA
+131C 11 prot2_095 PD YES NO NO 14.8 69 M MS-PD Brain Bank 11 95 132N NA 1 6 NA
+132N 11 prot2_188 Control YES NO NO 15.7 92 M Oxford Brain Bank 11 188 132C Normal aged brain 1 0 NA
+132C 11 prot2_143 Control YES YES NO 16.9 66 F KCL- London Neurodegenerative Diseases Brain Bank 11 143 133N NA 2 NA NA
+133N 11 prot2_024 PSP NO NO YES 17.4 78 M Barcelona Brain Bank 11 24 133C B 2 0 4
+133C 11 prot2_028 PSP NO NO YES 18.9 61 F Barcelona Brain Bank 11 28 134N NA NA NA NA
+134N 11 prot2_165 Control YES NO NO 19.9 93 M KCL- London Neurodegenerative Diseases Brain Bank 11 165 134C B 5 NA 2
+126 12 prot2_056 MSA NO YES NO 9.3 60 M Barcelona Brain Bank 12 56 127N NA NA NA NA
+127N 12 prot2_040 PD YES NO NO 9.5 88 M Barcelona Brain Bank 12 40 127C A 3 4 3
+127C 12 prot2_108 PD YES NO NO 10 85 M MS-PD Brain Bank 12 108 128N A 1 5 3
+128N 12 prot2_170 PD YES NO NO 10.1 86 F KCL- London Neurodegenerative Diseases Brain Bank 12 170 128C NA NA Parkinsons/Lewy body findings, NA
+128C 12 prot2_094 PD YES NO NO 10.4 82 F MS-PD Brain Bank 12 94 129N NA 3 6 NA
+129N 12 prot2_125 Control YES NO NO 10.4 71 M MS-PD Brain Bank 12 125 129C NA NA NA NA
+129C 12 prot2_197 Control YES YES NO 11 55 M Oxford Brain Bank 12 197 130N not AD 0 0 NA
+130N 12 prot2_115 Control YES YES NO 11.5 51 F KCL- London Neurodegenerative Diseases Brain Bank 12 115 130C NA NA NA NA
+130C 12 prot2_110 PD YES NO NO 13.9 82 F MS-PD Brain Bank 12 110 131N 0 3 5 3
+131N 12 prot2_023 PSP NO NO YES 14.3 78 M Barcelona Brain Bank 12 23 131C NA NA NA NA
+131C 12 prot2_062 MSA NO YES NO 14.6 64 F Barcelona Brain Bank 12 62 132N 0 1 NA 2
+132N 12 prot2_160 Control YES NO NO 14.6 75 F KCL- London Neurodegenerative Diseases Brain Bank 12 160 132C B 4 0 4
+132C 12 prot2_120 PD YES NO NO 15.1 78 M MS-PD Brain Bank 12 120 133N 0 2 4 0
+133N 12 prot2_145 Control YES NO NO 18.2 79 M KCL- London Neurodegenerative Diseases Brain Bank 12 145 133C NA 0 NA NA
+133C 12 prot2_194 Control YES NO YES 18.2 62 F Oxford Brain Bank 12 194 134N normal with respect to AD related pathology 1 0 NA
+134N 12 prot2_031 PSP NO NO YES 18.9 80 F Barcelona Brain Bank 12 31 134C NA NA 1 NA

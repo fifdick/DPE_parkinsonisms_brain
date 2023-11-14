@@ -1,0 +1,292 @@
+---
+title: "Proteomics brain: PD/CT, parkinsonisms" 
+author: "Fiona Dick"
+output: 
+ rmdformats::material:  
+  self_contained: true
+  highlight: tango
+  use_bookdown: true
+  code_folding: hide
+  lightbox: true
+  gallery: true
+  fig_width: 8 
+  fig_height: 12   
+  number_sections: true 
+---
+
+<!--
+To convert Markdown document to HTML,
+R -e "rmarkdown::render('methods.Rmd')"
+-->
+
+```{r echo = FALSE}
+knitr::opts_chunk$set(message = FALSE,
+			warning = FALSE,
+			echo = FALSE)
+```
+
+
+
+```{r dependencies, echo = FALSE}
+library(ensembldb)
+library(cowplot)
+library(boot)
+#library(mixOmics)
+#library(ggbiplot)
+library(tibble)
+#library(ermineR)
+library(ggpubr)
+library("DESeq2")
+require("ggplot2")
+require("kableExtra")
+require("ggfortify")
+require("readxl")
+require("magrittr")
+require("gridExtra")
+require("dplyr")
+require("tidyr")
+require("preprocessCore")         
+require("readr")
+require("knitr")
+require("kableExtra")
+require("ggpubr")
+require("stringr")
+require("pheatmap")
+require("RColorBrewer")
+require("ggrepel")
+require("patchwork")
+require("ggplotify")
+library("magrittr")
+#library(ComplexHeatmap)
+library(viridis)
+library(reshape2)
+library(pbapply)
+library(parallel)
+library(infer)
+library(lmtest)
+library(fgsea)
+cols_sex = c("F" = "lightseagreen", "M" = "violetred4")
+cols_pd = c("AD" = "maroon4", "PDAD" = "paleturquoise3", "PD" = "paleturquoise4", "Control" = "yellow3", "PSP" = "darkred", "MSA" = "chocolate1")
+source("../utils.R")
+oxphos <- readr::read_csv("../data/oxphos.csv") 
+synapses <- c("HPCAL1", "SYT2", "NPTX1", "SYNII", "SYT", "SYP", "ERC2", "CDH13","CCK", "HPCA","DCLK1")
+library(fgsea)
+gmt.files <- c(GO = "../refData/GO_simplified_0.4.gmt",
+               Mitocarta3 = "../refData/mitocarta3.0_symbols.gmt",
+               KEGG = "../refData/c2.cp.kegg.v7.4.symbols.gmt")
+pathways <- lapply(gmt.files, fgsea::gmtPathways)
+names(pathways) <- names(gmt.files)
+mgp <- readr::read_csv("../data/kelley_2018_top100_markers.csv")
+haris_g  <- c("SNCA", "LRRK2", "VPS35", "PRKN", "PINK1", "DJ1", "MAPT", "APP", "GBA", "LAMP2", "PDE10A", "TMEM175", "GCH1", "TH", "TDP43")
+```
+
+ Preprocessing and QC {.tabset .tabset-fade .tabset-pills}
+
+## Load and filter proteomics data 
+
+```{r}
+prot  <-  readr::read_csv("./prot.csv")
+metaping  <-  readr::read_csv("./meta_frontal.csv") %>%
+	mutate(Sex = ifelse(Sex == "f", "F", "M")) %>%
+	mutate(Diagnosis = as.factor(Diagnosis)) %>%
+	mutate(Diagnosis = relevel(Diagnosis, ref = "Control")) 
+prot[,-(1:6)] %>% apply(.,2,as.numeric) -> m
+rownames(m) <- prot$Accession
+# AUTHOS: "0, if the protein was identified but not quantified" not sure what this means
+m[which(m == 0)] <- NA
+#Choosing x only after I know the experiment design
+x <- 0.25
+stay <- which(!(rowSums(is.na(m)) > x*ncol(m)))
+length(stay)
+m <- m[stay,]
+```
+
+## lls Imputation 
+
+*Missing value estimation using local least squares (LLS). First, k variables (for Microarrya data usually the genes) are selected by pearson, spearman or kendall correlation coefficients. Then missing values are imputed by a linear combination of the k selected variables. The optimal combination is found by LLS regression. The method was first described by Kim et al, Bioinformatics, 21(2),2005.*  
+
+Question: Are proteins with NA values low abundance proteins?
+
+```{r}
+library(pcaMethods)
+
+#Plot to check expression of na proteins
+na_proteins <- which(colSums(is.na(t(m))) > 8)
+na_proteins
+m %>% as.data.frame %>% 
+	dplyr::mutate(Accession = rownames(.)) %>%
+	dplyr::mutate(na_prot = ifelse(Accession %in% names(na_proteins), TRUE,
+				       FALSE)) %>%
+	rowwise() %>%
+	dplyr::mutate(median = median(c_across(all_of(colnames(m))), na.rm = T)) %>%
+	ungroup() -> df
+ggplot(df, aes(x = na_prot, y = median)) +
+	geom_violin() +
+	geom_boxplot(width = .2) +
+	ggpubr::stat_compare_means() -> p1
+pcaMethods::nni(t(m), center = T, k = 300, method = "llsImpute", allGenes = T) -> result
+cObs  <- pcaMethods::completeObs(result)
+#plot to investigate negative values
+cObs[, colSums(cObs < 0) > 0] %>%
+	as.data.frame %>%
+	dplyr::mutate(id = rownames(.)) %>%
+	reshape2::melt(.) %>% 
+	dplyr::left_join(., metaping, by = "id") %>%
+	dplyr::mutate(neg = ifelse(value < 0, T, F)) %>%
+	ggplot(., aes(x = Diagnosis, y = value)) +
+	geom_boxplot() +
+	facet_wrap(~variable) -> p2 #not plotted
+p1 + p2
+#Removing these proteins
+cObs <- cObs[, colSums(cObs < 0) == 0]
+```
+
+## Sample PCA
+
+```{r}
+ pca <- prcomp(cObs, scale = T)
+pca_df <- as.data.frame(pca$x) %>%
+	dplyr::mutate(id = rownames(.)) %>%
+	dplyr::left_join(., metaping, by = "id")
+ggplot(pca_df, aes(x = PC1, y = PC2, col = as.factor(Batch))) +
+	geom_point(size = 2) +
+	cowplot::theme_cowplot() -> p1
+ggplot(pca_df, aes(x = PC1, y = PC2, col = PMI)) +
+	geom_point() +
+	scale_color_viridis() +
+	cowplot::theme_cowplot() -> p2
+ggplot(pca_df, aes(x = PC1, y = PC2, col = Diagnosis)) +
+	geom_point() +
+	cowplot::theme_cowplot() -> p3
+ggplot(pca_df, aes(x = PC1, y = PC2, col = Sex)) +
+	geom_point() +
+	scale_color_manual(values = cols_sex) +
+	cowplot::theme_cowplot() -> p4
+ggplot(pca_df, aes(x = PC1, y = PC2, col = Age_death )) +
+	scale_color_viridis() +
+	geom_point() +
+	cowplot::theme_cowplot() -> p5
+
+
+(p1 + p2 + p3) /
+(p4 + p5 )
+```
+
+# Celltypes {.tabset .tabset-fade .tabset-pills}
+
+```{r}
+set.seed(123)
+```
+
+## Neurons
+
+```{r}
+cols_pd <- cols_pd[c("AD", "PD", "Control", "PDAD")]
+res <- cellEstimates(cObs, df = metaping, celltype = "Neurons", highest = Inf, lowest = 0.1, minus = T, mgp, prot)
+res$plot
+metaping <- metaping %>%
+	select(-contains("neurons"))
+metaping <- metaping %>%
+	dplyr::left_join(.,
+			 res[["estimate"]] %>% dplyr::rename(neurons = mgp) %>% select(id, neurons),
+			 by = "id")
+lm("neurons ~ Diagnosis + Age_death + Batch + Sex + Sex:Diagnosis", data = metaping) %>% summary
+```
+
+## Oligodendrocytes
+
+```{r}
+res <- cellEstimates(cObs, df = metaping, celltype = "Oligodendrocytes", highest = -0.1, lowest = -Inf, minus = T, mgp, prot)
+res$plot
+metaping <- metaping %>%
+	select(-contains("oligos"))
+metaping <- metaping %>%
+	dplyr::left_join(.,
+			 res[["estimate"]] %>% dplyr::rename(oligos = mgp) %>% select(id, oligos),
+			 by = "id")
+lm("oligos ~ Diagnosis + Age_death + Batch + Sex + Sex:Diagnosis", data = metaping) %>% summary
+```
+
+## Microglia	
+
+```{r}
+res <- cellEstimates(cObs, df = metaping, celltype = "Microglia", highest = -0.15, lowest = -Inf, minus = T, mgp, prot)
+res$plot
+metaping <- metaping %>%
+	select(-contains("microglia"))
+metaping <- metaping %>%
+	dplyr::left_join(.,
+			 res[["estimate"]] %>% dplyr::rename(microglia = mgp) %>% select(id, microglia),
+			 by = "id")
+lm("microglia ~ Diagnosis + Age_death + Batch + Sex + Sex:Diagnosis", data = metaping) %>% summary
+```
+
+## Astrocytes
+
+```{r}
+res <- cellEstimates(cObs, df = metaping, celltype = "Astrocytes", highest =  Inf, lowest = 0.1, minus = T, mgp, prot)
+res$plot
+metaping <- metaping %>%
+	select(-contains("astrocytes"))
+metaping <- metaping %>%
+	dplyr::left_join(.,
+			 res[["estimate"]] %>% dplyr::rename(astrocytes = mgp) %>% select(id, astrocytes),
+			 by = "id")
+lm("astrocytes ~ Diagnosis + Age_death + Batch + Sex + Sex:Diagnosis", data = metaping) %>% summary
+```
+
+## Summary differences diagnosis
+
+```{r}
+metaping %>%
+	select(neurons, astrocytes, microglia, oligos, Sex, Diagnosis) %>%
+	dplyr::rename(Neurons = neurons,
+		      Astrocytes = astrocytes,
+		      Microglia = microglia,
+		      Oligodendrocytes = oligos) %>%
+	reshape2::melt(., id.vars = c("Sex", "Diagnosis")) %>%
+	ggplot(., aes( x = Diagnosis, y = value, col = Diagnosis)) +
+	geom_boxplot(width = .2, fill = "transparent") +
+	ggbeeswarm::geom_beeswarm() +
+	ggpubr::stat_compare_means(comparisons = list(c("PD", "Control"),
+						      c("AD", "Control"),
+						      c("Control", "PDAD"))) +	
+	facet_wrap(~variable, ncol = 4) +
+	scale_color_manual(values = cols_pd) +
+	labs(tag = "A", y = "MGP estimate") +
+	theme_cowplot() -> Fig1A
+```
+
+
+## Correlation celltypes
+
+```{r}
+metaping %>% select(where(is.numeric)) %>%
+	cor(., method = "kendall", use = "pairwise") %>%
+	ggcorrplot::ggcorrplot(., hc.order = T, outline.col = "white", lab = T, type = "upper") +
+ theme(axis.text.x = element_text(margin=margin(-2,0,0,0)),  # Order: top, right, bottom, left
+        axis.text.y = element_text(margin=margin(0,-2,0,0))) 
+```
+
+```{r}
+metaping %>% 
+	select(id, Diagnosis, Braak, astrocytes, neurons, oligos, microglia) %>%
+	dplyr::rename(Neurons = neurons,
+		      Astrocytes = astrocytes,
+		      Microglia = microglia,
+		      Oligodendrocytes = oligos) %>%
+	reshape2::melt(., id.vars = c("id",  "Diagnosis", "Braak")) %>%
+	ggplot(., aes(x = Braak, y = value)) +
+	geom_point(aes(col = Diagnosis)) +
+	scale_color_manual(values = cols_pd) +
+	theme_cowplot() +
+	facet_wrap(~variable, ncol = 2) +
+	stat_cor(method = "kendall") +
+	labs(y = "MGP estimate", x= "Braak_NFT", tag = "B") +
+	geom_smooth(method = "lm", col = "red", size = .6, alpha = .5) -> Fig1B
+pdf("../Figures/Figure1.pdf", width = 15, height = 5)
+Fig1A + Fig1B + plot_layout(widths = c(2,1))
+dev.off() 
+```
+
+
